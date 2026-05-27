@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Outfit:wght@100..900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", sans-serif;
+  
+  --color-brand-primary: #0a0a0a;
+  --color-brand-secondary: #404040;
+  --color-accent: #3b82f6;
+}
+
+@layer base {
+  body {
+    @apply bg-white text-brand-primary font-sans antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-brand-primary text-white px-6 py-3 rounded-full font-medium transition-all hover:bg-zinc-800 disabled:opacity-50;
+  }
+  
+  .btn-secondary {
+    @apply bg-white text-brand-primary border border-zinc-200 px-6 py-3 rounded-full font-medium transition-all hover:bg-zinc-50;
+  }
+}
