@@ -6,10 +6,16 @@ import os
 
 auth_bp = Blueprint('auth', __name__)
 
-supabase = create_client(
-    os.getenv('SUPABASE_URL'),
-    os.getenv('SUPABASE_SERVICE_KEY')
-)
+_supabase = None
+
+def get_supabase():
+    global _supabase
+    if _supabase is None:
+        _supabase = create_client(
+            os.getenv('SUPABASE_URL', ''),
+            os.getenv('SUPABASE_SERVICE_KEY', '')
+        )
+    return _supabase
 
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
@@ -25,7 +31,7 @@ def signup():
                 'error': 'Email and password required'
             }), 400
 
-        response = supabase.auth.admin.create_user({
+        response = get_supabase().auth.admin.create_user({
             'email': email,
             'password': password,
             'user_metadata': {'full_name': full_name},
@@ -54,7 +60,7 @@ def signin():
         email = data.get('email')
         password = data.get('password')
 
-        response = supabase.auth.sign_in_with_password({
+        response = get_supabase().auth.sign_in_with_password({
             'email': email,
             'password': password
         })
@@ -82,7 +88,7 @@ def signin():
 def signout():
     try:
         token = request.headers.get('Authorization', '').replace('Bearer ', '')
-        supabase.auth.sign_out()
+        get_supabase().auth.sign_out()
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
@@ -94,7 +100,7 @@ def get_user():
         if not token:
             return jsonify({'success': False, 'error': 'No token'}), 401
 
-        user = supabase.auth.get_user(token)
+        user = get_supabase().auth.get_user(token)
         return jsonify({
             'success': True,
             'user': {

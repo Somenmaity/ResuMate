@@ -4,14 +4,20 @@ import os
 
 resume_bp = Blueprint('resume', __name__)
 
-supabase = create_client(
-    os.getenv('SUPABASE_URL'),
-    os.getenv('SUPABASE_SERVICE_KEY')
-)
+_supabase = None
+
+def get_supabase():
+    global _supabase
+    if _supabase is None:
+        _supabase = create_client(
+            os.getenv('SUPABASE_URL', ''),
+            os.getenv('SUPABASE_SERVICE_KEY', '')
+        )
+    return _supabase
 
 def get_user_from_token(token):
     try:
-        user = supabase.auth.get_user(token)
+        user = get_supabase().auth.get_user(token)
         return user.user
     except:
         return None
@@ -45,10 +51,10 @@ def save_resume():
         }
 
         if resume_id:
-            result = supabase.table('resumes').update(payload).eq('id', resume_id).eq('user_id', user.id).execute()
+            result = get_supabase().table('resumes').update(payload).eq('id', resume_id).eq('user_id', user.id).execute()
             resume = result.data[0] if result.data else None
         else:
-            result = supabase.table('resumes').insert(payload).execute()
+            result = get_supabase().table('resumes').insert(payload).execute()
             resume = result.data[0] if result.data else None
 
         if not resume:
@@ -71,7 +77,7 @@ def get_resumes():
         if not user:
             return jsonify({'success': False, 'error': 'Unauthorized'}), 401
 
-        result = supabase.table('resumes').select('*').eq('user_id', user.id).order('updated_at', desc=True).execute()
+        result = get_supabase().table('resumes').select('*').eq('user_id', user.id).order('updated_at', desc=True).execute()
 
         return jsonify({
             'success': True,
@@ -89,7 +95,7 @@ def get_resume(resume_id):
         if not user:
             return jsonify({'success': False, 'error': 'Unauthorized'}), 401
 
-        result = supabase.table('resumes').select('*').eq('id', resume_id).eq('user_id', user.id).single().execute()
+        result = get_supabase().table('resumes').select('*').eq('id', resume_id).eq('user_id', user.id).single().execute()
 
         return jsonify({
             'success': True,
@@ -107,7 +113,7 @@ def delete_resume(resume_id):
         if not user:
             return jsonify({'success': False, 'error': 'Unauthorized'}), 401
 
-        supabase.table('resumes').delete().eq('id', resume_id).eq('user_id', user.id).execute()
+        get_supabase().table('resumes').delete().eq('id', resume_id).eq('user_id', user.id).execute()
 
         return jsonify({'success': True})
 
