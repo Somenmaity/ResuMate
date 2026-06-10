@@ -10,8 +10,12 @@ const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [linkedinLoading, setLinkedinLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -24,6 +28,7 @@ const Signup = () => {
     if (!email.trim()) { setError('Email required'); return }
     if (password.length < 6) { setError('Password min 6 characters'); return }
     if (password !== confirmPassword) { setError('Passwords do not match'); return }
+    if (!agreedToTerms) { setError('Please accept Terms & Conditions to continue'); return }
     setLoading(true)
     setError('')
     try {
@@ -53,6 +58,21 @@ const Signup = () => {
     } catch (err: any) {
       setError(err.message || 'Google signup failed')
       setGoogleLoading(false)
+    }
+  }
+
+  const handleLinkedInSignup = async () => {
+    setLinkedinLoading(true)
+    setError('')
+    try {
+      const { error: err } = await supabase.auth.signInWithOAuth({
+        provider: 'linkedin_oidc',
+        options: { redirectTo: `${window.location.origin}/auth/callback` }
+      })
+      if (err) throw err
+    } catch (err: any) {
+      setError(err.message || 'LinkedIn signup failed')
+      setLinkedinLoading(false)
     }
   }
 
@@ -145,7 +165,7 @@ const Signup = () => {
               border: '1.5px solid #e5e7eb', borderRadius: '12px',
               backgroundColor: 'white', fontSize: '15px',
               fontWeight: '600', cursor: googleLoading ? 'wait' : 'pointer',
-              marginBottom: '20px', display: 'flex',
+              marginBottom: '10px', display: 'flex',
               alignItems: 'center', justifyContent: 'center', gap: '10px'
             }}
           >
@@ -158,6 +178,29 @@ const Signup = () => {
                   <path fill="#1976D2" d="M43.6 20H24v8h11.3c-.8 2.3-2.3 4.2-4.2 5.5l6.2 5.2C40.8 35.3 44 30 44 24c0-1.4-.1-2.7-.4-4z"/>
                 </svg>
                 Sign Up with Google
+              </>
+            )}
+          </button>
+
+          {/* LinkedIn */}
+          <button
+            onClick={handleLinkedInSignup}
+            disabled={linkedinLoading}
+            style={{
+              width: '100%', padding: '13px',
+              border: '1.5px solid #e5e7eb', borderRadius: '12px',
+              backgroundColor: 'white', fontSize: '15px',
+              fontWeight: '600', cursor: linkedinLoading ? 'wait' : 'pointer',
+              marginBottom: '20px', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', gap: '10px'
+            }}
+          >
+            {linkedinLoading ? '⟳ Connecting...' : (
+              <>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#0A66C2">
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                </svg>
+                Sign Up with LinkedIn
               </>
             )}
           </button>
@@ -199,27 +242,117 @@ const Signup = () => {
 
             <div>
               <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '6px' }}>Password</label>
-              <input
-                type="password" value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="Min 6 characters" style={inputStyle}
-                onFocus={e => e.target.style.borderColor = '#4F46E5'}
-                onBlur={e => e.target.style.borderColor = '#e5e7eb'}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'} value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Min 6 characters"
+                  style={{ ...inputStyle, paddingRight: '44px' }}
+                  onFocus={e => e.target.style.borderColor = '#4F46E5'}
+                  onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(p => !p)}
+                  style={{
+                    position: 'absolute', right: '12px', top: '50%',
+                    transform: 'translateY(-50%)', background: 'none',
+                    border: 'none', cursor: 'pointer', padding: 0,
+                    color: '#9ca3af', display: 'flex', alignItems: 'center'
+                  }}
+                >
+                  {showPassword ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
 
             <div>
               <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '6px' }}>Confirm Password</label>
-              <input
-                type="password" value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                placeholder="Repeat password"
-                onKeyDown={e => e.key === 'Enter' && handleSignUp()}
-                style={inputStyle}
-                onFocus={e => e.target.style.borderColor = '#4F46E5'}
-                onBlur={e => e.target.style.borderColor = '#e5e7eb'}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showConfirm ? 'text' : 'password'} value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder="Repeat password"
+                  onKeyDown={e => e.key === 'Enter' && handleSignUp()}
+                  style={{ ...inputStyle, paddingRight: '44px' }}
+                  onFocus={e => e.target.style.borderColor = '#4F46E5'}
+                  onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(p => !p)}
+                  style={{
+                    position: 'absolute', right: '12px', top: '50%',
+                    transform: 'translateY(-50%)', background: 'none',
+                    border: 'none', cursor: 'pointer', padding: 0,
+                    color: '#9ca3af', display: 'flex', alignItems: 'center'
+                  }}
+                >
+                  {showConfirm ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
+          </div>
+
+          {/* Terms Checkbox */}
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: '10px',
+            marginBottom: '16px', padding: '12px 14px',
+            backgroundColor: '#f9fafb', borderRadius: '10px',
+            border: `1.5px solid ${agreedToTerms ? '#4F46E5' : '#e5e7eb'}`
+          }}>
+            <div
+              onClick={() => setAgreedToTerms(p => !p)}
+              style={{
+                width: '18px', height: '18px', borderRadius: '5px', flexShrink: 0, marginTop: '1px',
+                border: `2px solid ${agreedToTerms ? '#4F46E5' : '#d1d5db'}`,
+                backgroundColor: agreedToTerms ? '#4F46E5' : 'white',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', transition: 'all 0.15s'
+              }}
+            >
+              {agreedToTerms && (
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+            </div>
+            <p style={{ fontSize: '13px', color: '#374151', margin: 0, lineHeight: '1.5' }}>
+              I agree to the{' '}
+              <span
+                onClick={() => window.open('/terms', '_blank')}
+                style={{ color: '#4F46E5', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Terms of Service
+              </span>
+              {' '}and{' '}
+              <span
+                onClick={() => window.open('/terms', '_blank')}
+                style={{ color: '#4F46E5', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Privacy Policy
+              </span>
+            </p>
           </div>
 
           {error && (

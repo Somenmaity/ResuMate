@@ -12,10 +12,38 @@ interface TemplateModalProps {
   resumeData: any
 }
 
+// Rich sample data used when user's resume is empty
+const SAMPLE_DATA = {
+  personalInfo: {
+    fullName: 'Alex Johnson',
+    title: 'Senior Software Engineer',
+    email: 'alex@example.com',
+    phone: '+1 234 567 890',
+    location: 'San Francisco, CA',
+    linkedin: 'linkedin.com/in/alexj',
+    portfolio: 'alexjohnson.dev'
+  },
+  summary: 'Full-stack engineer with 6+ years building scalable web applications. Led teams at Fortune 500 companies, shipping products used by 5M+ users.',
+  skills: ['React', 'Node.js', 'TypeScript', 'Python', 'AWS', 'SQL', 'Docker'],
+  experience: [
+    { id: 1, jobTitle: 'Senior Software Engineer', company: 'Google', location: 'San Francisco, CA', startDate: 'Jan 2022', endDate: '', current: true, description: 'Led development of core search infrastructure serving 5M+ daily users\nReduced API latency by 40% through architecture improvements' },
+    { id: 2, jobTitle: 'Software Engineer', company: 'Airbnb', location: 'New York, NY', startDate: 'Jun 2019', endDate: 'Dec 2021', current: false, description: 'Built booking platform features increasing conversions by 22%' }
+  ],
+  education: [{ id: 1, degree: 'B.S. in Computer Science', institution: 'Stanford University', year: '2019', grade: '3.9 GPA' }],
+  projects: [{ id: 1, projectName: 'OpenTrack Dashboard', techStack: 'React, Node.js, PostgreSQL', description: 'Real-time analytics dashboard with 50K+ active users', projectUrl: '' }],
+  certifications: [{ id: 1, certName: 'AWS Solutions Architect', issuingOrg: 'Amazon Web Services', issueDate: '2023', credentialUrl: '' }],
+  languages: [{ id: 1, language: 'English', proficiency: 'Native' }]
+}
+
 const TemplateModal = ({ isOpen, onClose, onSelect, selectedId, resumeData }: TemplateModalProps) => {
   const [activeCategory, setActiveCategory] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [localSelected, setLocalSelected] = useState(selectedId)
+
+  // Use user's data if they've filled something, else fallback to sample data
+  const previewData = (resumeData?.personalInfo?.fullName || resumeData?.personal?.fullName)
+    ? resumeData
+    : SAMPLE_DATA
 
   const filteredTemplates = templates.filter(t => {
     const matchesCategory = activeCategory === 'All' || t.category === activeCategory
@@ -112,10 +140,10 @@ const TemplateModal = ({ isOpen, onClose, onSelect, selectedId, resumeData }: Te
                   `}>
                     {/* Template Thumbnail */}
                     <div className="absolute inset-0 origin-top-left" style={{ pointerEvents: 'none' }}>
-                      <ResumePreview 
-                        resumeData={resumeData} 
-                        templateId={template.id} 
-                        scale={0.35} 
+                      <ResumePreview
+                        resumeData={previewData}
+                        templateId={template.id}
+                        scale={0.35}
                       />
                     </div>
 
@@ -154,36 +182,48 @@ const TemplateModal = ({ isOpen, onClose, onSelect, selectedId, resumeData }: Te
           </div>
 
           {/* Right Sidebar: Live Preview of Selected */}
-          <div className="w-[380px] bg-zinc-50 border-l border-zinc-100 p-8 flex flex-col shrink-0">
-             <div className="mb-8">
-               <h3 className="text-sm font-black text-zinc-400 uppercase tracking-[0.2em] mb-4">Previewing</h3>
-               <div className="bg-white rounded-2xl p-4 shadow-sm border border-zinc-100 flex items-center gap-4">
-                  <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-bold">
-                    {templates.find(t => t.id === localSelected)?.name.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="font-bold text-zinc-900">{templates.find(t => t.id === localSelected)?.name}</p>
-                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Selected Style</p>
-                  </div>
+          <div className="w-[340px] bg-zinc-50 border-l border-zinc-100 p-6 flex flex-col shrink-0 overflow-y-auto">
+
+             {/* Selected template label */}
+             <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-3">Previewing</h3>
+             <div className="bg-white rounded-2xl px-4 py-3 shadow-sm border border-zinc-100 flex items-center gap-3 mb-5">
+               <div className="w-9 h-9 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-bold text-sm shrink-0">
+                 {templates.find(t => t.id === localSelected)?.name.charAt(0)}
+               </div>
+               <div>
+                 <p className="font-bold text-sm text-zinc-900">{templates.find(t => t.id === localSelected)?.name}</p>
+                 <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Selected Style</p>
                </div>
              </div>
 
-             <div className="flex-grow overflow-hidden flex items-start justify-center p-4 bg-zinc-200/50 rounded-[32px] border border-zinc-100 mb-8">
-                <div className="shadow-2xl origin-top" style={{ transform: 'scale(0.42)' }}>
-                   <ResumePreview 
-                     resumeData={resumeData} 
-                     templateId={localSelected} 
-                     scale={1} 
-                   />
-                </div>
+             {/* Preview — A4 aspect-ratio box so full page always fits */}
+             <div style={{
+               backgroundColor: '#f4f4f5',
+               borderRadius: '16px',
+               padding: '10px',
+               marginBottom: '20px',
+               border: '1px solid #e4e4e7',
+             }}>
+               {/* 210:297 = exact A4 ratio — height auto-adjusts to show full page */}
+               <div style={{
+                 width: '100%',
+                 aspectRatio: '210 / 297',
+                 overflow: 'hidden',
+                 borderRadius: '6px',
+                 boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+                 backgroundColor: 'white',
+               }}>
+                 <ResumePreview
+                   resumeData={previewData}
+                   templateId={localSelected}
+                   scale={0.33}
+                 />
+               </div>
              </div>
 
-             <button 
-               onClick={() => {
-                 onSelect(localSelected)
-                 onClose()
-               }}
-               className="w-full bg-zinc-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-zinc-200 flex items-center justify-center gap-3"
+             <button
+               onClick={() => { onSelect(localSelected); onClose(); }}
+               className="w-full bg-zinc-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-zinc-200 flex items-center justify-center gap-3 shrink-0"
              >
                Use This Template
                <Sparkles size={16} />

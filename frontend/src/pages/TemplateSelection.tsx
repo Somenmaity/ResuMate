@@ -13,19 +13,72 @@ export const TemplateSelection = () => {
     navigate('/builder');
   };
 
-  // Mock data for preview in selection
+  // Rich mock data so templates look fully filled in the preview
   const mockData = {
-    personal: {
-      fullName: 'YOUR NAME',
-      title: 'Professional Title',
-      email: 'hello@resumate.ai',
+    personalInfo: {
+      fullName: 'Alex Johnson',
+      title: 'Senior Software Engineer',
+      email: 'alex@example.com',
       phone: '+1 234 567 890',
-      location: 'City, Country',
-      summary: 'Experienced professional with a proven track record of success in leading complex projects and driving innovation.'
+      location: 'San Francisco, CA',
+      linkedin: 'linkedin.com/in/alexj',
+      portfolio: 'alexjohnson.dev'
     },
-    experience: [],
-    education: [],
-    skills: ['Leadership', 'Innovation', 'Strategy']
+    summary: 'Full-stack engineer with 6+ years building scalable web applications. Led teams at Fortune 500 companies, shipping products used by 5M+ users. Expert in React, Node.js, and cloud architecture.',
+    skills: ['React', 'Node.js', 'TypeScript', 'Python', 'AWS', 'SQL', 'Docker', 'GraphQL'],
+    experience: [
+      {
+        id: 1,
+        jobTitle: 'Senior Software Engineer',
+        company: 'Google',
+        location: 'San Francisco, CA',
+        startDate: 'Jan 2022',
+        endDate: '',
+        current: true,
+        description: 'Led development of core search infrastructure serving 5M+ daily users\nReduced API latency by 40% through caching and architecture improvements\nMentored team of 6 engineers and conducted 30+ technical interviews'
+      },
+      {
+        id: 2,
+        jobTitle: 'Software Engineer',
+        company: 'Airbnb',
+        location: 'New York, NY',
+        startDate: 'Jun 2019',
+        endDate: 'Dec 2021',
+        current: false,
+        description: 'Built booking platform features increasing conversions by 22%\nMigrated legacy codebase to React, cutting load time by 50%'
+      }
+    ],
+    education: [
+      {
+        id: 1,
+        degree: 'B.S. in Computer Science',
+        institution: 'Stanford University',
+        year: '2019',
+        grade: '3.9 GPA'
+      }
+    ],
+    projects: [
+      {
+        id: 1,
+        projectName: 'OpenTrack Dashboard',
+        techStack: 'React, Node.js, PostgreSQL',
+        description: 'Real-time analytics dashboard with 50K+ active users and 99.9% uptime',
+        projectUrl: ''
+      }
+    ],
+    certifications: [
+      {
+        id: 1,
+        certName: 'AWS Solutions Architect',
+        issuingOrg: 'Amazon Web Services',
+        issueDate: '2023',
+        credentialUrl: ''
+      }
+    ],
+    languages: [
+      { id: 1, language: 'English', proficiency: 'Native' },
+      { id: 2, language: 'Spanish', proficiency: 'Intermediate' }
+    ]
   };
 
   return (
@@ -49,12 +102,12 @@ export const TemplateSelection = () => {
                 : 'border-zinc-100 group-hover:border-zinc-300 group-hover:shadow-2xl group-hover:-translate-y-2'
               }
             `}>
-               {/* Template Preview */}
-               <div className="absolute inset-0 origin-top-left pointer-events-none transition-transform duration-500 group-hover:scale-[1.05]">
-                 <ResumePreview 
-                   resumeData={mockData} 
-                   templateId={template.id} 
-                   scale={0.35} 
+               {/* Template Preview — CSS zoom handles layout scaling */}
+               <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                 <ResumePreview
+                   resumeData={mockData}
+                   templateId={template.id}
+                   scale={0.35}
                  />
                </div>
 

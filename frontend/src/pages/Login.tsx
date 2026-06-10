@@ -8,7 +8,9 @@ const Login = () => {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [linkedinLoading, setLinkedinLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -47,6 +49,21 @@ const Login = () => {
     } catch (err: any) {
       setError(err.message || 'Google login failed')
       setGoogleLoading(false)
+    }
+  }
+
+  const handleLinkedInLogin = async () => {
+    setLinkedinLoading(true)
+    setError('')
+    try {
+      const { error: err } = await supabase.auth.signInWithOAuth({
+        provider: 'linkedin_oidc',
+        options: { redirectTo: `${window.location.origin}/auth/callback` }
+      })
+      if (err) throw err
+    } catch (err: any) {
+      setError(err.message || 'LinkedIn login failed')
+      setLinkedinLoading(false)
     }
   }
 
@@ -106,7 +123,7 @@ const Login = () => {
               border: '1.5px solid #e5e7eb', borderRadius: '12px',
               backgroundColor: 'white', fontSize: '15px',
               fontWeight: '600', cursor: googleLoading ? 'wait' : 'pointer',
-              marginBottom: '20px', display: 'flex',
+              marginBottom: '10px', display: 'flex',
               alignItems: 'center', justifyContent: 'center', gap: '10px'
             }}
           >
@@ -119,6 +136,29 @@ const Login = () => {
                   <path fill="#1976D2" d="M43.6 20H24v8h11.3c-.8 2.3-2.3 4.2-4.2 5.5l6.2 5.2C40.8 35.3 44 30 44 24c0-1.4-.1-2.7-.4-4z"/>
                 </svg>
                 Continue with Google
+              </>
+            )}
+          </button>
+
+          {/* LinkedIn */}
+          <button
+            onClick={handleLinkedInLogin}
+            disabled={linkedinLoading}
+            style={{
+              width: '100%', padding: '13px',
+              border: '1.5px solid #e5e7eb', borderRadius: '12px',
+              backgroundColor: 'white', fontSize: '15px',
+              fontWeight: '600', cursor: linkedinLoading ? 'wait' : 'pointer',
+              marginBottom: '20px', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', gap: '10px'
+            }}
+          >
+            {linkedinLoading ? '⟳ Connecting...' : (
+              <>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#0A66C2">
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                </svg>
+                Continue with LinkedIn
               </>
             )}
           </button>
@@ -156,16 +196,40 @@ const Login = () => {
               fontSize: '13px', fontWeight: '600',
               color: '#374151', display: 'block', marginBottom: '6px'
             }}>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="Your password"
-              onKeyDown={e => e.key === 'Enter' && handleSignIn()}
-              style={inputStyle}
-              onFocus={e => e.target.style.borderColor = '#4F46E5'}
-              onBlur={e => e.target.style.borderColor = '#e5e7eb'}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Your password"
+                onKeyDown={e => e.key === 'Enter' && handleSignIn()}
+                style={{ ...inputStyle, paddingRight: '44px' }}
+                onFocus={e => e.target.style.borderColor = '#4F46E5'}
+                onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(p => !p)}
+                style={{
+                  position: 'absolute', right: '12px', top: '50%',
+                  transform: 'translateY(-50%)', background: 'none',
+                  border: 'none', cursor: 'pointer', padding: 0,
+                  color: '#9ca3af', display: 'flex', alignItems: 'center'
+                }}
+              >
+                {showPassword ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Forgot */}

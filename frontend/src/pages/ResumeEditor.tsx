@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { aiAPI, resumeAPI } from '../lib/api';
+import { saveResumeData, loadResumeData } from '../lib/saveService';
 import { 
     User, 
     Briefcase, 
@@ -96,41 +97,58 @@ export const ResumeEditor = () => {
     const [enhanceTarget, setEnhanceTarget] = useState<{ type: string, id?: number } | null>(null);
     const [selectedTemplate, setSelectedTemplate] = useState(localStorage.getItem('selectedTemplate') || 'travis-classic');
     const [showTemplateModal, setShowTemplateModal] = useState(false);
-    const [zoom, setZoom] = useState(0.55);
+    const [zoom, setZoom] = useState(0.65);
     const [resumeId, setResumeId] = useState<string>(localStorage.getItem('resumeId') || '');
 
-    // Initial load from localStorage
-    React.useEffect(() => {
-        const savedData = localStorage.getItem('resumeData');
-        if (savedData) {
-            try {
-                const data = JSON.parse(savedData);
-                if (data.personalInfo) {
-                    setFullName(data.personalInfo.fullName || '');
-                    setTitle(data.personalInfo.title || '');
-                    setEmail(data.personalInfo.email || '');
-                    setPhone(data.personalInfo.phone || '');
-                    setLocation(data.personalInfo.location || '');
-                    setLinkedin(data.personalInfo.linkedin || '');
-                    setPortfolio(data.personalInfo.portfolio || '');
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const [lastSaved, setLastSaved] = useState<string>('');
+
+    // Load saved data on page open:
+    useEffect(() => {
+        const loadData = async () => {
+            const saved = await loadResumeData();
+            if (saved) {
+                if (saved.personalInfo) {
+                    setFullName(saved.personalInfo.fullName || '');
+                    setTitle(saved.personalInfo.title || '');
+                    setEmail(saved.personalInfo.email || '');
+                    setPhone(saved.personalInfo.phone || '');
+                    setLocation(saved.personalInfo.location || '');
+                    setLinkedin(saved.personalInfo.linkedin || '');
+                    setPortfolio(saved.personalInfo.portfolio || '');
                 }
-                if (data.summary) setSummary(data.summary);
-                if (data.experience && data.experience.length > 0) setExperience(data.experience);
-                if (data.education && data.education.length > 0) setEducation(data.education);
-                if (data.skills) setSkills(data.skills);
-                if (data.projects && data.projects.length > 0) setProjects(data.projects);
-                if (data.certifications && data.certifications.length > 0) setCertifications(data.certifications);
-                if (data.languages && data.languages.length > 0) setLanguages(data.languages);
-            } catch (e) {
-                console.error("Failed to parse saved resume data", e);
+                if (saved.summary) setSummary(saved.summary);
+                if (saved.experience?.length > 0) setExperience(saved.experience);
+                if (saved.education?.length > 0) setEducation(saved.education);
+                if (saved.skills?.length > 0) setSkills(saved.skills);
+                if (saved.projects?.length > 0) setProjects(saved.projects);
+                if (saved.certifications?.length > 0) setCertifications(saved.certifications);
+                if (saved.languages?.length > 0) setLanguages(saved.languages);
             }
-        }
+            
+            const lastSavedTime = localStorage.getItem('resumeLastSaved');
+            if (lastSavedTime) {
+                const date = new Date(lastSavedTime);
+                setLastSaved(date.toLocaleTimeString());
+            }
+        };
+        loadData();
     }, []);
 
-    // Save to localStorage whenever data changes
-    React.useEffect(() => {
+    // Manual save function:
+    const handleSave = async () => {
+        setSaveStatus('saving');
+        
         const resumeData = {
-            personalInfo: { fullName, title, email, phone, location, linkedin, portfolio },
+            personalInfo: {
+                fullName,
+                title,
+                email,
+                phone,
+                location,
+                linkedin,
+                portfolio
+            },
             summary,
             experience,
             education,
@@ -139,38 +157,51 @@ export const ResumeEditor = () => {
             certifications,
             languages
         };
-        localStorage.setItem('resumeData', JSON.stringify(resumeData));
-    }, [fullName, title, email, phone, location, linkedin, portfolio, summary, experience, education, skills, projects, certifications, languages]);
+
+        const result = await saveResumeData(resumeData);
+        
+        if (result.success) {
+            setSaveStatus('saved');
+            const now = new Date().toLocaleTimeString();
+            setLastSaved(now);
+            setTimeout(() => setSaveStatus('idle'), 3000);
+        } else {
+            setSaveStatus('error');
+            setTimeout(() => setSaveStatus('idle'), 3000);
+        }
+    };
+
+    // Auto-save (every 30 seconds):
+    useEffect(() => {
+        const autoSave = setInterval(async () => {
+            const resumeData = {
+                personalInfo: { fullName, title, email, phone, location, linkedin, portfolio },
+                summary, experience, education, skills,
+                projects, certifications, languages
+            };
+            localStorage.setItem('resumeData', JSON.stringify(resumeData));
+        }, 30000);
+        
+        return () => clearInterval(autoSave);
+    }, [fullName, title, email, phone, location, linkedin, 
+        portfolio, summary, experience, education, skills,
+        projects, certifications, languages]);
 
     React.useEffect(() => {
         localStorage.setItem('selectedTemplate', selectedTemplate);
     }, [selectedTemplate]);
 
-    const handleAutoSave = async () => {
-        const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-        if (!userData.id) return;
-        
-        try {
-            const result = await resumeAPI.save(
-                resumeData,
-                resumeId || undefined,
-                selectedTemplate
-            );
-            if (result.success) {
-                setResumeId(result.resumeId);
-                localStorage.setItem('resumeId', result.resumeId);
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (saveStatus !== 'saved') {
+                e.preventDefault();
+                e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
             }
-        } catch (err) {
-            console.error('Auto-save failed:', err);
-        }
-    };
-
-    React.useEffect(() => {
-        const timer = setTimeout(() => {
-            handleAutoSave();
-        }, 2000);
-        return () => clearTimeout(timer);
-    }, [fullName, title, email, phone, location, linkedin, portfolio, summary, experience, education, skills, projects, certifications, languages, selectedTemplate]);
+        };
+        
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [saveStatus]);
 
     const toggleSection = (id: string) => {
         setActiveSections(prev => 
@@ -391,9 +422,44 @@ export const ResumeEditor = () => {
                         <ArrowLeft size={18} />
                     </button>
                     <div className="h-6 w-[1px] bg-zinc-100" />
-                    <div className="flex items-center gap-2 text-zinc-400">
-                        <Save size={14} />
-                        <span className="text-xs font-bold uppercase tracking-widest text-green-500">All changes saved ✓</span>
+                    <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                      {lastSaved && (
+                        <span style={{
+                          fontSize: '12px',
+                          color: '#6b7280'
+                        }}>
+                          Last saved: {lastSaved}
+                        </span>
+                      )}
+                      <button
+                        onClick={handleSave}
+                        disabled={saveStatus === 'saving'}
+                        style={{
+                          padding: '8px 20px',
+                          backgroundColor: saveStatus === 'saved' 
+                            ? '#16a34a' 
+                            : saveStatus === 'error'
+                            ? '#dc2626'
+                            : saveStatus === 'saving'
+                            ? '#9ca3af'
+                            : '#4F46E5',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: saveStatus === 'saving' ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {saveStatus === 'saving' && '⟳ Saving...'}
+                        {saveStatus === 'saved' && '✅ Saved!'}
+                        {saveStatus === 'error' && '❌ Failed'}
+                        {saveStatus === 'idle' && '💾 Save'}
+                      </button>
                     </div>
                 </div>
 
@@ -794,38 +860,24 @@ export const ResumeEditor = () => {
                 </div>
 
                 {/* Right Side: Live Preview */}
-                <div className="hidden lg:flex w-1/2 bg-zinc-100 items-start justify-center overflow-y-auto p-12">
-                    <div style={{
-                        position: 'sticky',
-                        top: '20px',
-                        height: 'calc(100vh - 120px)',
-                        overflowY: 'auto',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        backgroundColor: '#f1f5f9',
-                        borderRadius: '12px',
-                        padding: '20px'
-                    }}>
+                {/* CSS zoom in ResumePreview properly shrinks the A4 page in layout flow,
+                    so no clip-box tricks needed — just center it with natural sizing */}
+                <div className="hidden lg:flex w-1/2 bg-zinc-100 justify-center overflow-y-auto py-6 px-4">
+                    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
                         <p style={{
-                            fontSize: '12px',
-                            color: '#888',
+                            fontSize: '10px',
+                            letterSpacing: '2px',
+                            color: '#999',
                             marginBottom: '12px',
-                            fontWeight: 500
-                        }}>LIVE PREVIEW • {selectedTemplate}</p>
+                            fontWeight: 600,
+                            textTransform: 'uppercase'
+                        }}>Live Preview • {selectedTemplate}</p>
 
-                        <div style={{
-                            width: '100%',
-                            overflow: 'hidden',
-                            boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
-                            borderRadius: '4px'
-                        }}>
-                            <ResumePreview 
-                                resumeData={resumeData}
-                                templateId={selectedTemplate}
-                                scale={zoom}
-                            />
-                        </div>
+                        <ResumePreview
+                            resumeData={resumeData}
+                            templateId={selectedTemplate}
+                            scale={zoom}
+                        />
                     </div>
                 </div>
             </div>
@@ -892,6 +944,56 @@ export const ResumeEditor = () => {
                 selectedId={selectedTemplate}
                 resumeData={resumeData}
             />
+
+            {saveStatus === 'saved' && (
+              <div style={{
+                position: 'fixed',
+                bottom: '24px',
+                right: '24px',
+                backgroundColor: '#16a34a',
+                color: 'white',
+                padding: '12px 20px',
+                borderRadius: '12px',
+                fontSize: '14px',
+                fontWeight: '600',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                zIndex: 9999,
+                animation: 'slideIn 0.3s ease'
+              }}>
+                ✅ Resume saved successfully!
+              </div>
+            )}
+
+            {saveStatus === 'error' && (
+              <div style={{
+                position: 'fixed',
+                bottom: '24px',
+                right: '24px',
+                backgroundColor: '#dc2626',
+                color: 'white',
+                padding: '12px 20px',
+                borderRadius: '12px',
+                fontSize: '14px',
+                fontWeight: '600',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                zIndex: 9999
+              }}>
+                ❌ Save failed. Check connection.
+              </div>
+            )}
+
+            <style>{`
+              @keyframes slideIn {
+                from { transform: translateX(100px); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+              }
+            `}</style>
         </div>
     );
 };

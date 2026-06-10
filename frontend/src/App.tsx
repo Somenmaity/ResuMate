@@ -18,6 +18,7 @@ import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
 import AuthCallback from './pages/AuthCallback';
 import ResetPassword from './pages/ResetPassword';
+import Terms from './pages/Terms';
 import { Navbar } from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -48,6 +49,7 @@ function App() {
               <Route path="/forgot-password" element={<PageTransition><ForgotPassword /></PageTransition>} />
               <Route path="/auth/callback" element={<PageTransition><AuthCallback /></PageTransition>} />
               <Route path="/reset-password" element={<PageTransition><ResetPassword /></PageTransition>} />
+              <Route path="/terms" element={<PageTransition><Terms /></PageTransition>} />
             </Routes>
           </motion.div>
         </AnimatePresence>

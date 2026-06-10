@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { enhanceText, enhanceFullResume } from '../lib/aiService';
+import { saveResumeData, loadResumeData } from '../lib/saveService';
 import { 
     Linkedin, 
     User, 
@@ -37,6 +38,8 @@ export const LinkedInImport = () => {
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(true);
     const [loadingStep, setLoadingStep] = useState(0);
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const [lastSaved, setLastSaved] = useState<string>('');
 
     // Flat State Variables
     const [fullName, setFullName] = useState('Rahul Sharma');
@@ -268,6 +271,87 @@ export const LinkedInImport = () => {
         };
     }, [isLoading, loadingSteps.length]);
 
+    // Load saved data on page open:
+    useEffect(() => {
+        const loadData = async () => {
+            const saved = await loadResumeData();
+            if (saved) {
+                if (saved.personalInfo) {
+                    setFullName(saved.personalInfo.fullName || '');
+                    setTitle(saved.personalInfo.title || '');
+                    setEmail(saved.personalInfo.email || '');
+                    setPhone(saved.personalInfo.phone || '');
+                    setLocation(saved.personalInfo.location || '');
+                    setLinkedin(saved.personalInfo.linkedin || '');
+                    setPortfolio(saved.personalInfo.portfolio || '');
+                }
+                if (saved.summary) setSummary(saved.summary);
+                if (saved.experience?.length > 0) setExperience(saved.experience);
+                if (saved.education?.length > 0) setEducation(saved.education);
+                if (saved.skills?.length > 0) setSkills(saved.skills);
+                if (saved.projects?.length > 0) setProjects(saved.projects);
+                if (saved.certifications?.length > 0) setCertifications(saved.certifications);
+                if (saved.languages?.length > 0) setLanguages(saved.languages);
+            }
+            
+            const lastSavedTime = localStorage.getItem('resumeLastSaved');
+            if (lastSavedTime) {
+                const date = new Date(lastSavedTime);
+                setLastSaved(date.toLocaleTimeString());
+            }
+        };
+        loadData();
+    }, []);
+
+    // Manual save function:
+    const handleSave = async () => {
+        setSaveStatus('saving');
+        
+        const resumeData = {
+            personalInfo: {
+                fullName,
+                title,
+                email,
+                phone,
+                location,
+                linkedin,
+                portfolio
+            },
+            summary,
+            experience,
+            education,
+            skills,
+            projects,
+            certifications,
+            languages
+        };
+
+        const result = await saveResumeData(resumeData);
+        
+        if (result.success) {
+            setSaveStatus('saved');
+            const now = new Date().toLocaleTimeString();
+            setLastSaved(now);
+            setTimeout(() => setSaveStatus('idle'), 3000);
+        } else {
+            setSaveStatus('error');
+            setTimeout(() => setSaveStatus('idle'), 3000);
+        }
+    };
+
+    // Beforeunload warning:
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (saveStatus !== 'saved') {
+                e.preventDefault();
+                e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+            }
+        };
+        
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [saveStatus]);
+
     const toggleSection = (id: string) => {
         setActiveSections(prev => 
             prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
@@ -393,9 +477,44 @@ export const LinkedInImport = () => {
                             <ArrowLeft size={18} />
                         </button>
                         <div className="h-6 w-[1px] bg-zinc-100" />
-                        <div className="flex items-center gap-2">
-                             <Save size={14} className="text-zinc-400" />
-                             <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">All changes saved</span>
+                        <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                          {lastSaved && (
+                            <span style={{
+                              fontSize: '12px',
+                              color: '#6b7280'
+                            }}>
+                              Last saved: {lastSaved}
+                            </span>
+                          )}
+                          <button
+                            onClick={handleSave}
+                            disabled={saveStatus === 'saving'}
+                            style={{
+                              padding: '8px 20px',
+                              backgroundColor: saveStatus === 'saved' 
+                                ? '#16a34a' 
+                                : saveStatus === 'error'
+                                ? '#dc2626'
+                                : saveStatus === 'saving'
+                                ? '#9ca3af'
+                                : '#4F46E5',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              cursor: saveStatus === 'saving' ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            {saveStatus === 'saving' && '⟳ Saving...'}
+                            {saveStatus === 'saved' && '✅ Saved!'}
+                            {saveStatus === 'error' && '❌ Failed'}
+                            {saveStatus === 'idle' && '💾 Save'}
+                          </button>
                         </div>
                     </div>
 
@@ -971,6 +1090,56 @@ export const LinkedInImport = () => {
                 selectedId={selectedTemplate}
                 resumeData={resumeData}
             />
+
+            {saveStatus === 'saved' && (
+              <div style={{
+                position: 'fixed',
+                bottom: '24px',
+                right: '24px',
+                backgroundColor: '#16a34a',
+                color: 'white',
+                padding: '12px 20px',
+                borderRadius: '12px',
+                fontSize: '14px',
+                fontWeight: '600',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                zIndex: 9999,
+                animation: 'slideIn 0.3s ease'
+              }}>
+                ✅ Resume saved successfully!
+              </div>
+            )}
+
+            {saveStatus === 'error' && (
+              <div style={{
+                position: 'fixed',
+                bottom: '24px',
+                right: '24px',
+                backgroundColor: '#dc2626',
+                color: 'white',
+                padding: '12px 20px',
+                borderRadius: '12px',
+                fontSize: '14px',
+                fontWeight: '600',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                zIndex: 9999
+              }}>
+                ❌ Save failed. Check connection.
+              </div>
+            )}
+
+            <style>{`
+              @keyframes slideIn {
+                from { transform: translateX(100px); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+              }
+            `}</style>
         </div>
     );
 };

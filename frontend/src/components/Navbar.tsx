@@ -137,7 +137,6 @@ const BuilderNavbar = () => {
         ))}
       </div>
 
-      <Link to="/" className="text-sm font-medium text-zinc-500 hover:text-black">Save & Exit</Link>
     </nav>
   );
 };

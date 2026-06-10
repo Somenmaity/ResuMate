@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { aiAPI } from '../lib/api';
+import { saveResumeData, loadResumeData } from '../lib/saveService';
 import { 
     Upload, 
     FileText, 
@@ -10,7 +11,9 @@ import {
     Check, 
     Link as LinkIcon, 
     CloudIcon,
-    X
+    X,
+    ArrowLeft,
+    Save
 } from 'lucide-react';
 
 export const JDUpload = () => {
@@ -20,6 +23,61 @@ export const JDUpload = () => {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [detectedInfo, setDetectedInfo] = useState<any>(null);
     const [analysisStep, setAnalysisStep] = useState(0);
+
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const [lastSaved, setLastSaved] = useState<string>('');
+    const [resumeData, setResumeData] = useState<any>(null);
+
+    useEffect(() => {
+        const loadData = async () => {
+            const saved = await loadResumeData();
+            if (saved) {
+                setResumeData(saved);
+            }
+            const lastSavedTime = localStorage.getItem('resumeLastSaved');
+            if (lastSavedTime) {
+                const date = new Date(lastSavedTime);
+                setLastSaved(date.toLocaleTimeString());
+            }
+        };
+        loadData();
+    }, []);
+
+    const handleSave = async () => {
+        setSaveStatus('saving');
+        const dataToSave = resumeData || {
+            personalInfo: {},
+            summary: '',
+            experience: [],
+            education: [],
+            skills: [],
+            projects: [],
+            certifications: [],
+            languages: []
+        };
+        const result = await saveResumeData(dataToSave);
+        if (result.success) {
+            setSaveStatus('saved');
+            const now = new Date().toLocaleTimeString();
+            setLastSaved(now);
+            setTimeout(() => setSaveStatus('idle'), 3000);
+        } else {
+            setSaveStatus('error');
+            setTimeout(() => setSaveStatus('idle'), 3000);
+        }
+    };
+
+    // Beforeunload warning:
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (saveStatus !== 'saved') {
+                e.preventDefault();
+                e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [saveStatus]);
 
     const analysisSteps = [
         "Reading job description...",
@@ -118,6 +176,55 @@ export const JDUpload = () => {
 
     return (
         <div className="bg-white min-h-screen pb-20">
+            {/* Top Bar Header */}
+            <header className="h-16 border-b border-zinc-100 flex items-center justify-between px-6 shrink-0 bg-white z-20">
+                <div className="flex items-center gap-4">
+                    <button onClick={() => navigate(-1)} className="p-2 hover:bg-zinc-50 rounded-lg transition-colors">
+                        <ArrowLeft size={18} />
+                    </button>
+                    <div className="h-6 w-[1px] bg-zinc-100" />
+                    <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                      {lastSaved && (
+                        <span style={{
+                          fontSize: '12px',
+                          color: '#6b7280'
+                        }}>
+                          Last saved: {lastSaved}
+                        </span>
+                      )}
+                      <button
+                        onClick={handleSave}
+                        disabled={saveStatus === 'saving'}
+                        style={{
+                          padding: '8px 20px',
+                          backgroundColor: saveStatus === 'saved' 
+                            ? '#16a34a' 
+                            : saveStatus === 'error'
+                            ? '#dc2626'
+                            : saveStatus === 'saving'
+                            ? '#9ca3af'
+                            : '#4F46E5',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: saveStatus === 'saving' ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {saveStatus === 'saving' && '⟳ Saving...'}
+                        {saveStatus === 'saved' && '✅ Saved!'}
+                        {saveStatus === 'error' && '❌ Failed'}
+                        {saveStatus === 'idle' && '💾 Save'}
+                      </button>
+                    </div>
+                </div>
+            </header>
+
             {/* Breadcrumb Steps */}
             <div className="border-b border-zinc-100 py-6">
                 <div className="container mx-auto px-6">
@@ -306,6 +413,56 @@ export const JDUpload = () => {
                     <p className="text-xs text-zinc-400 font-bold uppercase tracking-widest mt-4">Takes about 30 seconds</p>
                 </div>
             </div>
+
+            {saveStatus === 'saved' && (
+              <div style={{
+                position: 'fixed',
+                bottom: '24px',
+                right: '24px',
+                backgroundColor: '#16a34a',
+                color: 'white',
+                padding: '12px 20px',
+                borderRadius: '12px',
+                fontSize: '14px',
+                fontWeight: '600',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                zIndex: 9999,
+                animation: 'slideIn 0.3s ease'
+              }}>
+                ✅ Resume saved successfully!
+              </div>
+            )}
+
+            {saveStatus === 'error' && (
+              <div style={{
+                position: 'fixed',
+                bottom: '24px',
+                right: '24px',
+                backgroundColor: '#dc2626',
+                color: 'white',
+                padding: '12px 20px',
+                borderRadius: '12px',
+                fontSize: '14px',
+                fontWeight: '600',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                zIndex: 9999
+              }}>
+                ❌ Save failed. Check connection.
+              </div>
+            )}
+
+            <style>{`
+              @keyframes slideIn {
+                from { transform: translateX(100px); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+              }
+            `}</style>
         </div>
     );
 };
