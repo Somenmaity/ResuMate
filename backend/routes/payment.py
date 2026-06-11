@@ -52,7 +52,7 @@ def create_order():
             }), 500
 
         order = resp.json()
-        print(f'ORDER CREATED: {order["id"]} | ₹{amount}')
+        print(f'ORDER CREATED: {order["id"]} | INR {amount}')
 
         return jsonify({
             'success':  True,
@@ -101,7 +101,7 @@ def verify_payment():
                 print(f'SIGNATURE MISMATCH! expected={expected} got={signature}')
                 return jsonify({'success': False, 'error': 'Invalid payment signature'}), 400
 
-            print('Signature OK ✓')
+            print('Signature OK')
 
         # ── Save to Supabase ──────────────────────────────
         try:
@@ -128,7 +128,7 @@ def verify_payment():
                 if resume_id: payload['resume_id'] = str(resume_id)
 
                 supabase.table('payments').insert(payload).execute()
-                print(f'Payment saved ✓  plan={plan}  amount=₹{amount}')
+                print(f'Payment saved  plan={plan}  amount=INR {amount}')
 
                 if resume_id:
                     supabase.table('resumes').update(

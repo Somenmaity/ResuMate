@@ -48,7 +48,7 @@ def _send_email(to_email: str, to_name: str, template_params: dict) -> bool:
             timeout=10,
         )
         ok = resp.status_code == 200
-        print(f'[WEBHOOK] Email {"sent ✓" if ok else "FAILED"} → {to_email}')
+        print(f'[WEBHOOK] Email {"sent OK" if ok else "FAILED"} to {to_email}')
         return ok
     except Exception as e:
         print(f'[WEBHOOK] Email exception: {e}')
@@ -89,7 +89,7 @@ def payment_webhook():
             to_name=name,
             template_params={
                 'payment_id':    payment_id,
-                'amount':        f'₹{amount}',
+                'amount':        f'INR {amount}',
                 'plan':          plan_label,
                 'download_link': f'{os.getenv("FRONTEND_URL", "http://localhost:5173")}/download',
             },
