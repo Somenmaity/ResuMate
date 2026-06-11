@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { 
-    Check, 
-    Download, 
-    Mail, 
-    Share2, 
-    ArrowRight, 
-    Clock, 
+import {
+    Check,
+    Download,
+    Mail,
+    Share2,
+    ArrowRight,
+    Clock,
     ExternalLink,
-    BarChart3
+    BarChart3,
+    FileText
 } from 'lucide-react';
 import { sendResumeEmail } from '../lib/emailService';
 
@@ -162,20 +163,34 @@ export const Success = () => {
 
                     {/* Action Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <ActionCard 
+                        <ActionCard
                             icon={<Download className="text-white" size={24} />}
                             title="Download Your Resume"
                             subtitle="Proceed to final download area"
                             color="bg-zinc-900"
                             onClick={() => navigate('/download')}
                         />
-                        <ActionCard 
-                            icon={<Mail className="text-white" size={24} />}
-                            title="Email Sent"
-                            subtitle="Receipt sent to your email"
-                            color="bg-indigo-600"
-                        />
-                        <ActionCard 
+                        {(() => {
+                            const p = JSON.parse(localStorage.getItem('payment') || '{}');
+                            const hasCoverLetter = p.plan === 'cover_letter' || p.plan === 'bundle';
+                            return hasCoverLetter ? (
+                                <ActionCard
+                                    icon={<FileText className="text-white" size={24} />}
+                                    title="Generate Cover Letter"
+                                    subtitle="AI-powered for any job"
+                                    color="bg-emerald-600"
+                                    onClick={() => navigate('/cover-letter')}
+                                />
+                            ) : (
+                                <ActionCard
+                                    icon={<Mail className="text-white" size={24} />}
+                                    title="Email Sent"
+                                    subtitle="Receipt sent to your email"
+                                    color="bg-indigo-600"
+                                />
+                            );
+                        })()}
+                        <ActionCard
                             icon={<Share2 className="text-white" size={24} />}
                             title="Share Resume"
                             subtitle="Generates public view link"

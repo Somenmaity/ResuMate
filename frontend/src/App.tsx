@@ -19,16 +19,21 @@ import ForgotPassword from './pages/ForgotPassword';
 import AuthCallback from './pages/AuthCallback';
 import ResetPassword from './pages/ResetPassword';
 import Terms from './pages/Terms';
+import CoverLetter from './pages/CoverLetter';
+import AdminLogin from './pages/admin/AdminLogin';
+import AdminDashboard from './pages/admin/AdminDashboard';
 import { Navbar } from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
 
 function App() {
   const location = useLocation();
+  const isAdmin  = location.pathname.startsWith('/admin');
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
-      <main className="flex-grow">
+      {!isAdmin && <Navbar />}
+      <main className={isAdmin ? '' : 'flex-grow'}>
         <AnimatePresence mode="wait">
           <motion.div key={location.pathname}>
             <Routes location={location}>
@@ -50,6 +55,9 @@ function App() {
               <Route path="/auth/callback" element={<PageTransition><AuthCallback /></PageTransition>} />
               <Route path="/reset-password" element={<PageTransition><ResetPassword /></PageTransition>} />
               <Route path="/terms" element={<PageTransition><Terms /></PageTransition>} />
+              <Route path="/cover-letter" element={<ProtectedRoute><PageTransition><CoverLetter /></PageTransition></ProtectedRoute>} />
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
             </Routes>
           </motion.div>
         </AnimatePresence>

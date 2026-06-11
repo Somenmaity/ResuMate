@@ -20,7 +20,7 @@ CORS(app, resources={
             os.getenv('FRONTEND_URL', '')
         ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
+        "allow_headers": ["Content-Type", "Authorization", "X-Admin-Token"]
     }
 })
 
@@ -30,12 +30,16 @@ from routes.resume import resume_bp
 from routes.ai import ai_bp
 from routes.payment import payment_bp
 from routes.email import email_bp
+from routes.admin import admin_bp
+from routes.webhook import webhook_bp
 
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(resume_bp, url_prefix='/api/resume')
 app.register_blueprint(ai_bp, url_prefix='/api/ai')
 app.register_blueprint(payment_bp, url_prefix='/api/payment')
 app.register_blueprint(email_bp, url_prefix='/api/email')
+app.register_blueprint(admin_bp, url_prefix='/api/admin')
+app.register_blueprint(webhook_bp, url_prefix='/api/webhooks')
 
 @app.route('/api/health')
 def health():

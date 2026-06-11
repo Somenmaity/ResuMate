@@ -2,483 +2,417 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { paymentAPI } from '../lib/api';
 import { motion } from 'motion/react';
-import { 
-    Lock, 
-    CreditCard, 
-    Smartphone, 
-    Building2, 
-    Wallet,
-    Check,
-    BarChart3,
-    Shield,
-    Star,
-    RefreshCw,
-    Download,
-    ArrowRight
+import {
+  Lock, CreditCard, Smartphone, Building2, Wallet,
+  Check, Shield, Star, RefreshCw, ArrowRight, FileText, Mail, X
 } from 'lucide-react';
 
+// ─── Products ───────────────────────────────────────────────────────────────
+const PRODUCTS = [
+  {
+    id: 'resume',
+    icon: '📄',
+    title: 'Resume Download',
+    subtitle: 'PDF + DOCX formats',
+    price: 99,
+    features: ['ATS-friendly PDF', 'Editable DOCX', 'AI Enhanced', 'All templates'],
+    color: '#4F46E5',
+  },
+  {
+    id: 'cover_letter',
+    icon: '✉️',
+    title: 'Cover Letter',
+    subtitle: 'AI-generated for any job',
+    price: 21,
+    features: ['AI-written content', 'Matches your resume', 'PDF + DOCX', 'Customizable'],
+    color: '#059669',
+    badge: 'New',
+  },
+  {
+    id: 'bundle',
+    icon: '🎯',
+    title: 'Bundle — Both',
+    subtitle: 'Resume + Cover Letter',
+    price: 110,
+    originalPrice: 120,
+    features: ['Everything in Resume', 'Everything in Cover Letter', 'Save ₹10', 'Best value'],
+    color: '#D97706',
+    badge: 'Best Value',
+  },
+];
+
 export const Payment = () => {
-    const navigate = useNavigate();
-    const [selectedPlan, setSelectedPlan] = useState('pro');
-    const [paymentMethod, setPaymentMethod] = useState('upi');
-    const [isLoading, setIsLoading] = useState(false);
-    const [errors, setErrors] = useState<Record<string, string>>({});
-    
-    // User info state
-    const [userInfo, setUserInfo] = useState({
-        name: '',
-        email: '',
-        phone: ''
-    });
+  const navigate = useNavigate();
+  const [selectedProduct, setSelectedProduct] = useState('resume');
+  const [paymentMethod, setPaymentMethod] = useState('upi');
+  const [isLoading, setIsLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setUserInfo({ ...userInfo, [e.target.name]: e.target.value });
-        if (errors[e.target.name]) {
-            setErrors({ ...errors, [e.target.name]: '' });
-        }
-    };
+  const [userInfo, setUserInfo] = useState({ name: '', email: '', phone: '' });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-    const validate = () => {
-        const newErrors: Record<string, string> = {};
-        if (!userInfo.name) newErrors.name = 'Full Name is required';
-        if (!userInfo.email) newErrors.email = 'Email Address is required';
-        else if (!/\S+@\S+\.\S+/.test(userInfo.email)) newErrors.email = 'Email is invalid';
-        if (!userInfo.phone) newErrors.phone = 'Phone Number is required';
-        else if (!/^\d{10}$/.test(userInfo.phone.replace(/\s/g, '').replace('+91', ''))) newErrors.phone = 'Phone Number must be 10 digits';
-        
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
+  const product = PRODUCTS.find(p => p.id === selectedProduct)!;
 
-    const handlePayment = async () => {
-        if (!validate()) return;
+  const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUserInfo({ ...userInfo, [e.target.name]: e.target.value });
+    setErrors({ ...errors, [e.target.name]: '' });
+    setPaymentError('');
+  };
 
-        setIsLoading(true);
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!userInfo.name.trim()) e.name = 'Full name required';
+    if (!userInfo.email.trim()) e.email = 'Email required';
+    else if (!/\S+@\S+\.\S+/.test(userInfo.email)) e.email = 'Invalid email';
+    if (!userInfo.phone.trim()) e.phone = 'Phone required';
+    else if (!/^\d{10}$/.test(userInfo.phone.replace(/\s/g, '').replace('+91', '')))
+      e.phone = '10-digit phone number required';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
-        const amount = plans.find(p => p.id === selectedPlan)?.price || 199;
-        
-        try {
-            const order = await paymentAPI.createOrder(amount, selectedPlan);
-            
-            if (!order.success) {
-                alert('Order creation failed');
-                setIsLoading(false);
-                return;
-            }
+  const handlePayment = async () => {
+    if (!validate()) return;
+    setIsLoading(true);
+    setPaymentError('');
 
-            const rzp = new (window as any).Razorpay({
-                key: order.key,
-                amount: order.amount,
-                currency: order.currency,
-                order_id: order.orderId,
-                name: 'ResuMate AI',
-                prefill: { 
-                    name: userInfo.name, 
-                    email: userInfo.email, 
-                    contact: userInfo.phone 
-                },
-                theme: { color: '#4F46E5' },
-                handler: async (response: any) => {
-                    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-                    
-                    try {
-                        const verified = await paymentAPI.verifyPayment({
-                            razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_order_id: response.razorpay_order_id,
-                            razorpay_signature: response.razorpay_signature,
-                            userId: userData.id,
-                            resumeId: localStorage.getItem('resumeId'),
-                            amount: amount,
-                            plan: selectedPlan,
-                            name: userInfo.name,
-                            email: userInfo.email,
-                            phone: userInfo.phone
-                        });
+    try {
+      const order = await paymentAPI.createOrder(product.price, selectedProduct);
 
-                        if (verified.success) {
-                            localStorage.setItem('payment', JSON.stringify({
-                                paymentId: response.razorpay_payment_id,
-                                name: userInfo.name,
-                                email: userInfo.email,
-                                phone: userInfo.phone,
-                                amount: amount
-                            }));
-                            navigate('/success');
-                        } else {
-                            alert('Payment verification failed');
-                        }
-                    } catch (err) {
-                        alert('Payment verification failed');
-                    } finally {
-                        setIsLoading(false);
-                    }
-                },
-                modal: {
-                    ondismiss: () => {
-                        setIsLoading(false);
-                    }
-                }
+      if (!order.success) {
+        setPaymentError(order.error || 'Order creation failed. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+
+      const rzp = new (window as any).Razorpay({
+        key: order.key,
+        amount: order.amount,
+        currency: 'INR',
+        order_id: order.orderId,
+        name: 'ResuMate AI',
+        description: product.title,
+        prefill: { name: userInfo.name, email: userInfo.email, contact: `+91${userInfo.phone.replace(/\D/g, '').slice(-10)}` },
+        theme: { color: product.color },
+        handler: async (response: any) => {
+          try {
+            const verified = await paymentAPI.verifyPayment({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              userId: JSON.parse(localStorage.getItem('userData') || '{}').id,
+              resumeId: localStorage.getItem('resumeId'),
+              amount: product.price,
+              plan: selectedProduct,
+              name: userInfo.name,
+              email: userInfo.email,
+              phone: userInfo.phone,
             });
-            rzp.open();
-        } catch (error) {
-            console.error('Payment failed:', error);
+
+            if (verified.success) {
+              localStorage.setItem('payment', JSON.stringify({
+                paymentId: response.razorpay_payment_id,
+                name: userInfo.name,
+                email: userInfo.email,
+                phone: userInfo.phone,
+                amount: product.price,
+                plan: selectedProduct,
+                productTitle: product.title,
+              }));
+              navigate('/success');
+            } else {
+              setPaymentError('Payment verification failed. Contact support with payment ID: ' + response.razorpay_payment_id);
+            }
+          } catch {
+            setPaymentError('Verification failed. Please contact support.');
+          } finally {
             setIsLoading(false);
-            alert('Payment initialization failed.');
-        }
-    };
+          }
+        },
+        modal: {
+          ondismiss: () => { setIsLoading(false); }
+        },
+      });
+      rzp.open();
+    } catch (err: any) {
+      setPaymentError(err?.message || 'Payment initialization failed. Please try again.');
+      setIsLoading(false);
+    }
+  };
 
-    const plans = [
-        { id: 'basic', name: 'Basic', price: 199, resumes: 'One Resume', features: ['1 PDF download', '1 DOCX download', 'AI optimized'] },
-        { id: 'pro', name: 'Pro', price: 499, resumes: '3 Resumes', features: ['3 Resume downloads', 'Cover letter', 'Priority AI', 'All templates'], popular: true },
-        { id: 'lifetime', name: 'Lifetime', price: 2999, originalPrice: 4999, resumes: 'Unlimited', features: ['Unlimited resumes', 'Lifetime access', 'All features'], bestValue: true }
-    ];
+  const gst = Math.round(product.price * 0.18 * 100) / 100;
+  const total = product.price;
 
-    const upiApps = [
-        { name: 'GPay', icon: 'https://www.vectorlogo.zone/logos/google_pay/google_pay-icon.svg' },
-        { name: 'PhonePe', icon: 'https://www.vectorlogo.zone/logos/phonepe/phonepe-icon.svg' },
-        { name: 'Paytm', icon: 'https://www.vectorlogo.zone/logos/paytm/paytm-icon.svg' },
-        { name: 'BHIM', icon: 'https://www.vectorlogo.zone/logos/bhimupi/bhimupi-icon.svg' }
-    ];
+  return (
+    <div className="bg-zinc-50 min-h-screen font-sans">
+      {/* Navbar */}
+      <header className="h-16 border-b border-zinc-200 flex items-center justify-between px-6 md:px-10 bg-white sticky top-0 z-50">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-zinc-900 rounded-lg flex items-center justify-center text-white font-black text-sm">R</div>
+          <span className="font-black text-lg tracking-tight uppercase">ResuMate <span className="text-zinc-400">AI</span></span>
+        </div>
+        <div className="flex items-center gap-2 text-green-600 font-bold text-[10px] uppercase tracking-widest bg-green-50 px-3 py-1.5 rounded-full">
+          <Lock size={12} /> Secure Checkout
+        </div>
+      </header>
 
-    return (
-        <div className="bg-zinc-50 min-h-screen font-sans">
-            {/* Top Navbar */}
-            <header className="h-16 border-b border-zinc-200 flex items-center justify-between px-10 bg-white sticky top-0 z-50">
-                <div className="flex items-center gap-6">
-                    <LinkIcon />
-                    <div className="flex items-center gap-4">
-                        <Step number={1} label="Build" completed />
-                        <Step number={2} label="AI Enhance" completed />
-                        <Step number={3} label="Review" completed />
-                        <Step number={4} label="Download" active />
-                    </div>
-                </div>
-                <div className="flex items-center gap-2 text-green-600 font-bold text-[10px] uppercase tracking-widest bg-green-50 px-3 py-1.5 rounded-full">
-                    <Lock size={12} />
-                    Secure Checkout
-                </div>
-            </header>
+      <div className="max-w-6xl mx-auto px-4 md:px-10 py-10">
+        <div className="flex flex-col lg:flex-row gap-10">
 
-            <div className="max-w-7xl mx-auto px-10 py-12">
-                <div className="flex flex-col lg:flex-row gap-12">
-                    {/* LEFT: FORM */}
-                    <div className="lg:w-[55%] space-y-12">
-                        {/* Plan Selection */}
-                        <div className="space-y-6">
-                            <h2 className="text-sm font-black uppercase tracking-[0.2em] text-zinc-400">Select Plan</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {plans.map(plan => (
-                                    <button 
-                                        key={plan.id}
-                                        onClick={() => setSelectedPlan(plan.id)}
-                                        className={`relative bg-white p-6 rounded-3xl border-2 transition-all text-left flex flex-col h-full ${
-                                            selectedPlan === plan.id ? 'border-indigo-600 ring-4 ring-indigo-50 shadow-xl' : 'border-zinc-100 hover:border-zinc-200 scale-[0.98]'
-                                        }`}
-                                    >
-                                        {plan.popular && (
-                                            <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full">Most Popular</span>
-                                        )}
-                                        {plan.bestValue && (
-                                            <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-zinc-900 text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full">Best Value</span>
-                                        )}
-                                        
-                                        <div className="mb-4">
-                                            <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400 mb-1">{plan.resumes}</h3>
-                                            <div className="flex items-baseline gap-1">
-                                                <span className="text-2xl font-black text-zinc-900">₹{plan.price}</span>
-                                                {plan.originalPrice && <span className="text-xs font-bold text-zinc-300 line-through">₹{plan.originalPrice}</span>}
-                                            </div>
-                                        </div>
+          {/* ── LEFT ─────────────────────────────────────── */}
+          <div className="lg:w-[58%] space-y-10">
 
-                                        <div className="space-y-2 mb-6 flex-grow">
-                                            {plan.features.map(f => (
-                                                <div key={f} className="flex items-center gap-2 text-[10px] font-bold text-zinc-600">
-                                                    <Check size={12} className="text-green-500" strokeWidth={3} /> {f}
-                                                </div>
-                                            ))}
-                                        </div>
+            {/* Product Selection */}
+            <div>
+              <h2 className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400 mb-5">What do you need?</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {PRODUCTS.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelectedProduct(p.id)}
+                    className={`relative bg-white rounded-3xl border-2 p-5 text-left transition-all ${
+                      selectedProduct === p.id
+                        ? 'border-indigo-600 ring-4 ring-indigo-50 shadow-xl'
+                        : 'border-zinc-100 hover:border-zinc-200'
+                    }`}
+                  >
+                    {p.badge && (
+                      <span className={`absolute -top-2.5 left-4 text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${
+                        p.badge === 'Best Value' ? 'bg-amber-400 text-zinc-900' : 'bg-emerald-500 text-white'
+                      }`}>{p.badge}</span>
+                    )}
 
-                                        <div className={`w-full py-2 rounded-xl text-center text-[10px] font-black uppercase tracking-widest transition-colors ${
-                                            selectedPlan === plan.id ? 'bg-indigo-600 text-white' : 'bg-zinc-50 text-zinc-400'
-                                        }`}>
-                                            {selectedPlan === plan.id ? 'Selected' : 'Select'}
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+                    <div className="text-2xl mb-3">{p.icon}</div>
+                    <h3 className="font-black text-zinc-900 text-sm mb-0.5">{p.title}</h3>
+                    <p className="text-[11px] text-zinc-400 font-medium mb-3">{p.subtitle}</p>
 
-                        {/* User Information */}
-                        <div className="space-y-6">
-                            <h2 className="text-sm font-black uppercase tracking-[0.2em] text-zinc-400">Where should we send your resume?</h2>
-                            <div className="bg-white p-8 rounded-3xl border border-indigo-100 shadow-xl shadow-indigo-50/50 space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Full Name</label>
-                                        <input 
-                                            type="text" 
-                                            name="name"
-                                            value={userInfo.name}
-                                            onChange={handleInputChange}
-                                            placeholder="John Doe" 
-                                            className={`w-full bg-zinc-50 border rounded-2xl px-6 py-4 text-sm font-bold outline-none transition-colors ${errors.name ? 'border-red-500 bg-red-50' : 'border-zinc-200 focus:border-indigo-500'}`} 
-                                            required
-                                        />
-                                        {errors.name && <p className="text-[9px] font-bold text-red-500 mt-1 uppercase tracking-tight">{errors.name}</p>}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Phone Number</label>
-                                        <input 
-                                            type="tel" 
-                                            name="phone"
-                                            value={userInfo.phone}
-                                            onChange={handleInputChange}
-                                            placeholder="+91 98765 43210" 
-                                            className={`w-full bg-zinc-50 border rounded-2xl px-6 py-4 text-sm font-bold outline-none transition-colors ${errors.phone ? 'border-red-500 bg-red-50' : 'border-zinc-200 focus:border-indigo-500'}`} 
-                                            required
-                                        />
-                                        {errors.phone && <p className="text-[9px] font-bold text-red-500 mt-1 uppercase tracking-tight">{errors.phone}</p>}
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Email Address</label>
-                                    <input 
-                                        type="email" 
-                                        name="email"
-                                        value={userInfo.email}
-                                        onChange={handleInputChange}
-                                        placeholder="john@example.com" 
-                                        className={`w-full bg-zinc-50 border rounded-2xl px-6 py-4 text-sm font-bold outline-none transition-colors ${errors.email ? 'border-red-500 bg-red-50' : 'border-zinc-200 focus:border-indigo-500'}`} 
-                                        required
-                                    />
-                                    {errors.email && <p className="text-[9px] font-bold text-red-500 mt-1 uppercase tracking-tight">{errors.email}</p>}
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight">We'll send your PDF and Word files to this email instantly after payment.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Payment Method */}
-                        <div className="space-y-6">
-                            <h2 className="text-sm font-black uppercase tracking-[0.2em] text-zinc-400">Payment Method</h2>
-                            <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
-                                <div className="flex border-b border-zinc-50">
-                                    <PaymentTab active={paymentMethod === 'card'} icon={<CreditCard size={16} />} label="Card" onClick={() => setPaymentMethod('card')} />
-                                    <PaymentTab active={paymentMethod === 'upi'} icon={<Smartphone size={16} />} label="UPI" onClick={() => setPaymentMethod('upi')} />
-                                    <PaymentTab active={paymentMethod === 'net'} icon={<Building2 size={16} />} label="Net Banking" onClick={() => setPaymentMethod('net')} />
-                                    <PaymentTab active={paymentMethod === 'wallet'} icon={<Wallet size={16} />} label="Wallet" onClick={() => setPaymentMethod('wallet')} />
-                                </div>
-
-                                <div className="p-8">
-                                    {paymentMethod === 'upi' && (
-                                        <div className="space-y-8">
-                                            <div className="flex gap-3">
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="Enter UPI ID (e.g. name@upi)" 
-                                                    className="flex-grow bg-zinc-50 border border-zinc-200 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-indigo-500 transition-colors"
-                                                />
-                                                <button className="bg-indigo-600 text-white px-8 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all">Verify</button>
-                                            </div>
-                                            <div className="space-y-4">
-                                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Popular Apps</p>
-                                                <div className="flex gap-4">
-                                                    {upiApps.map(app => (
-                                                        <button key={app.name} className="flex flex-col items-center gap-2 p-4 bg-zinc-50 border border-transparent hover:border-zinc-200 rounded-2xl transition-all w-24">
-                                                            <img src={app.icon} alt={app.name} className="w-8 h-8" />
-                                                            <span className="text-[10px] font-black text-zinc-500">{app.name}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {paymentMethod === 'card' && (
-                                        <div className="space-y-6">
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Card Number</label>
-                                                <div className="relative">
-                                                  <input type="text" placeholder="0000 0000 0000 0000" className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-indigo-500 transition-colors" />
-                                                  <CreditCard className="absolute right-6 top-4 text-zinc-300" size={20} />
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Expiry Date</label>
-                                                    <input type="text" placeholder="MM / YY" className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-indigo-500 transition-colors" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">CVV</label>
-                                                    <input type="password" placeholder="***" className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-indigo-500 transition-colors" />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Name on Card</label>
-                                                <input type="text" placeholder="Full Name" className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-indigo-500 transition-colors" />
-                                            </div>
-                                            <label className="flex items-center gap-3 cursor-pointer">
-                                                <input type="checkbox" className="w-5 h-5 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500" />
-                                                <span className="text-xs font-bold text-zinc-500">Save card for future payments</span>
-                                            </label>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Coupon */}
-                        <div className="flex items-center justify-between bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm">
-                            <div className="space-y-1">
-                                <p className="text-xs font-black text-zinc-900 uppercase tracking-widest">Have a coupon code?</p>
-                                <button className="text-[10px] font-bold text-indigo-600 hover:underline">Click here to apply</button>
-                            </div>
-                            <div className="flex gap-2">
-                                <input type="text" placeholder="CODE10" className="bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 text-xs font-bold outline-none" />
-                                <button className="bg-zinc-900 text-white px-6 rounded-xl text-[10px] font-black uppercase tracking-widest">Apply</button>
-                            </div>
-                        </div>
+                    <div className="flex items-baseline gap-1 mb-3">
+                      <span className="text-2xl font-black text-zinc-900">₹{p.price}</span>
+                      {p.originalPrice && (
+                        <span className="text-xs text-zinc-300 line-through font-bold">₹{p.originalPrice}</span>
+                      )}
                     </div>
 
-                    {/* RIGHT: ORDER SUMMARY */}
-                    <div className="lg:w-[45%]">
-                        <div className="bg-white rounded-[40px] border border-zinc-100 shadow-2xl p-10 sticky top-28">
-                            <h2 className="text-sm font-black uppercase tracking-[0.2em] text-zinc-400 mb-8">Order Summary</h2>
-                            
-                            <div className="flex gap-6 mb-8 bg-zinc-50 p-4 rounded-3xl border border-dotted border-zinc-200">
-                                <div className="w-20 h-24 bg-white rounded-lg shadow-sm overflow-hidden relative grayscale opacity-40">
-                                   <div className="absolute inset-0 flex items-center justify-center -rotate-45">
-                                      <span className="text-[6px] font-black uppercase tracking-widest text-zinc-300">PREVIEW</span>
-                                   </div>
-                                </div>
-                                <div className="flex flex-col justify-center">
-                                    <p className="text-xs font-black text-zinc-400 uppercase tracking-widest">Plan</p>
-                                    <h3 className="text-lg font-black text-zinc-900 uppercase tracking-tighter">Basic - One Resume</h3>
-                                    <div className="flex items-center gap-2 mt-2">
-                                       <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center">
-                                          <Check size={10} className="text-green-600" strokeWidth={4} />
-                                       </div>
-                                       <span className="text-[10px] font-bold text-zinc-500">AI Enhanced Resume</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4 mb-8">
-                                <div className="flex justify-between text-xs font-bold text-zinc-500">
-                                    <span>Resume Builder</span>
-                                    <span>₹199.00</span>
-                                </div>
-                                <div className="flex justify-between text-xs font-bold text-green-600">
-                                    <span>AI Enhancement</span>
-                                    <span className="uppercase tracking-widest">Included ✓</span>
-                                </div>
-                                <div className="flex justify-between text-xs font-bold text-zinc-500">
-                                    <span>GST (18%)</span>
-                                    <span>₹35.82</span>
-                                </div>
-                                <div className="flex justify-between text-xs font-bold text-zinc-500">
-                                    <span>Discount</span>
-                                    <span>-₹0.00</span>
-                                </div>
-                                <div className="h-[1px] bg-zinc-100 my-4" />
-                                <div className="flex justify-between items-baseline">
-                                    <span className="text-sm font-black text-zinc-400 uppercase tracking-[0.2em]">Total</span>
-                                    <span className="text-4xl font-black text-zinc-900 leading-none tracking-tighter">₹234.82</span>
-                                </div>
-                            </div>
-
-                            <div className="space-y-3 mb-10">
-                                <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-300 mb-4">What's included:</h4>
-                                <SummaryItem label="PDF download (ATS-friendly)" />
-                                <SummaryItem label="DOCX download (editable)" />
-                                <SummaryItem label="Watermark removed" />
-                                <SummaryItem label="Lifetime access to this resume" />
-                                <SummaryItem label="Email delivery" />
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-2 mb-10">
-                                <Badge icon={<Shield size={12} />} label="SSL Secure" />
-                                <Badge icon={<Star size={12} />} label="4.9/5 Rating" />
-                                <Badge icon={<RefreshCw size={12} />} label="7-day refund" />
-                            </div>
-
-                            <button 
-                                onClick={handlePayment}
-                                disabled={isLoading}
-                                className={`w-full bg-zinc-900 text-white py-6 rounded-[30px] font-black text-xs uppercase tracking-[0.2em] hover:bg-black transition-all shadow-2xl flex items-center justify-center gap-4 group ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <RefreshCw size={20} className="animate-spin" />
-                                        Processing...
-                                    </>
-                                ) : (
-                                    <>
-                                        Pay ₹{plans.find(p => p.id === selectedPlan)?.price || 234.82} Securely
-                                        <ArrowRight size={20} className="group-hover:translate-x-2 transition-transform" />
-                                    </>
-                                )}
-                            </button>
-                            <p className="text-center text-[10px] font-bold text-zinc-400 mt-6 uppercase tracking-wider">
-                                Powered by <span className="text-zinc-600">Razorpay</span> • 256-bit encryption
-                            </p>
+                    <div className="space-y-1.5 mb-4">
+                      {p.features.map(f => (
+                        <div key={f} className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-semibold">
+                          <Check size={10} className="text-green-500 shrink-0" strokeWidth={3} /> {f}
                         </div>
+                      ))}
                     </div>
-                </div>
+
+                    <div className={`w-full py-1.5 rounded-xl text-center text-[10px] font-black uppercase tracking-widest transition-colors ${
+                      selectedProduct === p.id ? 'bg-indigo-600 text-white' : 'bg-zinc-50 text-zinc-400'
+                    }`}>
+                      {selectedProduct === p.id ? '✓ Selected' : 'Select'}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-        </div>
-    );
-};
 
-const LinkIcon = () => (
-    <div className="flex items-center gap-2">
-      <div className="w-8 h-8 bg-zinc-900 rounded-lg flex items-center justify-center text-white">
-        <BarChart3 size={18} />
+            {/* User Info */}
+            <div>
+              <h2 className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400 mb-5">Delivery Details</h2>
+              <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-2">Full Name</label>
+                    <input
+                      name="name" value={userInfo.name} onChange={handleInput}
+                      placeholder="Rahul Sharma"
+                      className={`w-full bg-zinc-50 border rounded-2xl px-4 py-3 text-sm font-semibold outline-none transition-colors ${errors.name ? 'border-red-400 bg-red-50' : 'border-zinc-200 focus:border-indigo-500'}`}
+                    />
+                    {errors.name && <p className="text-[9px] text-red-500 font-bold mt-1 uppercase">{errors.name}</p>}
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-2">Phone Number</label>
+                    <input
+                      name="phone" value={userInfo.phone} onChange={handleInput}
+                      placeholder="+91 98765 43210"
+                      className={`w-full bg-zinc-50 border rounded-2xl px-4 py-3 text-sm font-semibold outline-none transition-colors ${errors.phone ? 'border-red-400 bg-red-50' : 'border-zinc-200 focus:border-indigo-500'}`}
+                    />
+                    {errors.phone && <p className="text-[9px] text-red-500 font-bold mt-1 uppercase">{errors.phone}</p>}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-2">Email Address</label>
+                  <input
+                    name="email" value={userInfo.email} onChange={handleInput}
+                    placeholder="rahul@gmail.com" type="email"
+                    className={`w-full bg-zinc-50 border rounded-2xl px-4 py-3 text-sm font-semibold outline-none transition-colors ${errors.email ? 'border-red-400 bg-red-50' : 'border-zinc-200 focus:border-indigo-500'}`}
+                  />
+                  {errors.email && <p className="text-[9px] text-red-500 font-bold mt-1 uppercase">{errors.email}</p>}
+                  <p className="text-[10px] text-zinc-400 font-semibold mt-1.5">Files will be sent to this email after payment.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Method */}
+            <div>
+              <h2 className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400 mb-5">Payment Method</h2>
+              <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
+                <div className="flex border-b border-zinc-50">
+                  {[
+                    { id: 'upi', icon: <Smartphone size={14} />, label: 'UPI' },
+                    { id: 'card', icon: <CreditCard size={14} />, label: 'Card' },
+                    { id: 'net', icon: <Building2 size={14} />, label: 'Net Banking' },
+                    { id: 'wallet', icon: <Wallet size={14} />, label: 'Wallet' },
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setPaymentMethod(tab.id)}
+                      className={`flex-grow flex items-center justify-center gap-1.5 py-4 text-[10px] font-black uppercase tracking-widest transition-all border-t-2 ${
+                        paymentMethod === tab.id
+                          ? 'bg-white text-indigo-600 border-indigo-600'
+                          : 'bg-zinc-50 text-zinc-400 border-transparent hover:text-zinc-600'
+                      }`}
+                    >
+                      {tab.icon} {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="p-6">
+                  {paymentMethod === 'upi' && (
+                    <div className="space-y-4">
+                      <p className="text-xs font-bold text-zinc-500">Enter UPI ID or pay via app</p>
+                      <div className="flex gap-2">
+                        <input
+                          type="text" placeholder="name@upi"
+                          className="flex-grow bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm font-semibold outline-none focus:border-indigo-500 transition-colors"
+                        />
+                        <button className="bg-indigo-600 text-white px-5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all">Verify</button>
+                      </div>
+                      <div className="flex gap-3 pt-1">
+                        {['GPay', 'PhonePe', 'Paytm', 'BHIM'].map(app => (
+                          <div key={app} className="flex flex-col items-center gap-1 bg-zinc-50 border border-zinc-100 rounded-xl px-3 py-2 w-16 text-center">
+                            <div className="w-7 h-7 bg-zinc-200 rounded-full" />
+                            <span className="text-[9px] font-black text-zinc-400">{app}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {paymentMethod !== 'upi' && (
+                    <div className="text-center py-6">
+                      <p className="text-sm font-bold text-zinc-400">Razorpay will open a secure payment window</p>
+                      <p className="text-xs text-zinc-300 mt-1">Supports all {paymentMethod === 'card' ? 'Visa/Mastercard/Amex cards' : paymentMethod === 'net' ? '50+ banks' : 'major wallets'}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Error */}
+            {paymentError && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3"
+              >
+                <X size={16} className="text-red-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-red-700">Payment Failed</p>
+                  <p className="text-xs text-red-500 mt-0.5">{paymentError}</p>
+                </div>
+                <button onClick={() => setPaymentError('')} className="ml-auto text-red-400 hover:text-red-600">
+                  <X size={14} />
+                </button>
+              </motion.div>
+            )}
+          </div>
+
+          {/* ── RIGHT: ORDER SUMMARY ─────────────────────── */}
+          <div className="lg:w-[42%]">
+            <div className="bg-white rounded-[32px] border border-zinc-100 shadow-2xl p-8 sticky top-24">
+              <h2 className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400 mb-6">Order Summary</h2>
+
+              {/* Selected product card */}
+              <div className="bg-gradient-to-br from-zinc-50 to-zinc-100 rounded-2xl p-5 mb-6 border border-zinc-200">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-3xl">{product.icon}</span>
+                  <div>
+                    <h3 className="font-black text-zinc-900 text-sm">{product.title}</h3>
+                    <p className="text-[10px] text-zinc-500 font-semibold">{product.subtitle}</p>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  {product.features.map(f => (
+                    <div key={f} className="flex items-center gap-2 text-[10px] text-zinc-600 font-semibold">
+                      <Check size={10} className="text-green-500 shrink-0" strokeWidth={3} /> {f}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Price breakdown */}
+              <div className="space-y-3 mb-6">
+                <div className="flex justify-between text-xs font-semibold text-zinc-500">
+                  <span>{product.title}</span>
+                  <span>₹{product.price}</span>
+                </div>
+                {product.originalPrice && (
+                  <div className="flex justify-between text-xs font-bold text-green-600">
+                    <span>Bundle Discount</span>
+                    <span>-₹{product.originalPrice - product.price}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-xs font-semibold text-zinc-400">
+                  <span>GST (18%) — included</span>
+                  <span>₹{gst}</span>
+                </div>
+                <div className="h-px bg-zinc-100 my-2" />
+                <div className="flex justify-between items-baseline">
+                  <span className="text-xs font-black text-zinc-400 uppercase tracking-widest">Total</span>
+                  <span className="text-3xl font-black text-zinc-900 tracking-tight">₹{total}</span>
+                </div>
+              </div>
+
+              {/* Trust badges */}
+              <div className="grid grid-cols-3 gap-2 mb-6">
+                {[
+                  { icon: <Shield size={12} />, label: 'SSL Secure' },
+                  { icon: <Star size={12} />, label: '4.9★ Rating' },
+                  { icon: <RefreshCw size={12} />, label: '7-day Refund' },
+                ].map(b => (
+                  <div key={b.label} className="bg-zinc-50 rounded-xl p-2 flex flex-col items-center gap-1 text-zinc-400">
+                    {b.icon}
+                    <span className="text-[8px] font-black uppercase tracking-wide text-center">{b.label}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Pay Button */}
+              <button
+                onClick={handlePayment}
+                disabled={isLoading}
+                className={`w-full py-5 rounded-2xl font-black text-sm uppercase tracking-widest text-white transition-all shadow-xl flex items-center justify-center gap-3 group ${
+                  isLoading ? 'bg-zinc-400 cursor-not-allowed' : 'bg-zinc-900 hover:bg-black'
+                }`}
+              >
+                {isLoading ? (
+                  <><RefreshCw size={18} className="animate-spin" /> Processing...</>
+                ) : (
+                  <>Pay ₹{total} Securely <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" /></>
+                )}
+              </button>
+
+              <p className="text-center text-[10px] font-bold text-zinc-400 mt-4 uppercase tracking-wider">
+                Powered by <span className="text-zinc-600">Razorpay</span> • 256-bit SSL
+              </p>
+
+              {/* Delivery note */}
+              <div className="mt-5 bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-start gap-2">
+                <Mail size={14} className="text-blue-500 shrink-0 mt-0.5" />
+                <p className="text-[10px] font-semibold text-blue-600 leading-relaxed">
+                  Your {selectedProduct === 'bundle' ? 'resume and cover letter' : selectedProduct === 'cover_letter' ? 'cover letter' : 'resume'} will be emailed to <strong>{userInfo.email || 'your email'}</strong> immediately after payment.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <span className="font-display font-black text-lg tracking-tighter uppercase">ResuMate<span className="text-zinc-400">AI</span></span>
     </div>
-);
-
-const Step = ({ number, label, active, completed }: { number: number, label: string, active?: boolean, completed?: boolean }) => (
-    <div className="flex items-center gap-2">
-        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black transition-colors ${
-            completed ? 'bg-green-500 text-white' : active ? 'bg-indigo-600 text-white' : 'bg-zinc-100 text-zinc-400'
-        }`}>
-            {completed ? <Check size={12} strokeWidth={4} /> : number}
-        </div>
-        <span className={`text-[9px] font-black uppercase tracking-widest ${
-            active ? 'text-black' : 'text-zinc-400'
-        }`}>
-            {label}
-        </span>
-    </div>
-);
-
-const PaymentTab = ({ active, icon, label, onClick }: { active: boolean, icon: React.ReactNode, label: string, onClick: () => void }) => (
-    <button 
-        onClick={onClick}
-        className={`flex-grow flex items-center justify-center gap-2 py-5 font-black text-[10px] uppercase tracking-widest transition-all ${
-            active ? 'bg-white text-indigo-600 border-t-2 border-indigo-600 ring-1 ring-zinc-50' : 'bg-zinc-50 text-zinc-400 border-t-2 border-transparent'
-        }`}
-    >
-        {icon}
-        {label}
-    </button>
-);
-
-const SummaryItem = ({ label }: { label: string }) => (
-    <div className="flex items-center gap-3">
-        <div className="w-4 h-4 bg-green-500 text-white flex items-center justify-center rounded-full shrink-0">
-            <Check size={10} strokeWidth={4} />
-        </div>
-        <span className="text-[11px] font-bold text-zinc-600 uppercase tracking-wide">{label}</span>
-    </div>
-);
-
-const Badge = ({ icon, label }: { icon: React.ReactNode, label: string }) => (
-    <div className="bg-zinc-50 rounded-2xl p-3 flex flex-col items-center justify-center gap-1">
-        <div className="text-zinc-400">
-           {icon}
-        </div>
-        <span className="text-[8px] font-black text-zinc-400 uppercase tracking-[0.1em] text-center">{label}</span>
-    </div>
-);
+  );
+};
