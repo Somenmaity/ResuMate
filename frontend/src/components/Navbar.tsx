@@ -63,7 +63,7 @@ export const Navbar = () => {
               {user.user_metadata?.full_name || user.email}
             </span>
             <button
-              onClick={async () => { await signOut(); navigate('/') }}
+              onClick={async () => { await signOut(); navigate('/'); window.scrollTo(0, 0); }}
               style={{
                 padding:'8px 16px', border:'1px solid #e5e7eb',
                 borderRadius:'8px', backgroundColor:'white',

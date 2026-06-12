@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Landing } from './pages/Landing';
 import { JDUpload } from './pages/JDUpload';
@@ -56,6 +56,7 @@ function App() {
               <Route path="/reset-password" element={<PageTransition><ResetPassword /></PageTransition>} />
               <Route path="/terms" element={<PageTransition><Terms /></PageTransition>} />
               <Route path="/cover-letter" element={<ProtectedRoute><PageTransition><CoverLetter /></PageTransition></ProtectedRoute>} />
+              <Route path="/pricing" element={<Navigate to="/" replace state={{ scrollTo: 'pricing' }} />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
             </Routes>

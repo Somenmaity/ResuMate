@@ -72,7 +72,7 @@ const AdminLogin = () => {
             </label>
             <input
               type="email" value={email} onChange={e => { setEmail(e.target.value); setError('') }}
-              placeholder="admin@resumate.ai"
+              placeholder="Enter admin email"
               style={{
                 width: '100%', padding: '12px 16px', borderRadius: '12px',
                 border: `1.5px solid ${error ? '#ef4444' : '#334155'}`,

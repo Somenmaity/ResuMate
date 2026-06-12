@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { paymentAPI } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { motion } from 'motion/react';
 import {
   Lock, CreditCard, Smartphone, Building2, Wallet,
@@ -50,6 +51,19 @@ export const Payment = () => {
 
   const [userInfo, setUserInfo] = useState({ name: '', email: '', phone: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const { email, user_metadata } = session.user;
+        setUserInfo(prev => ({
+          ...prev,
+          email: email || '',
+          name: user_metadata?.full_name || '',
+        }));
+      }
+    });
+  }, []);
 
   const product = PRODUCTS.find(p => p.id === selectedProduct)!;
 
@@ -220,7 +234,7 @@ export const Payment = () => {
                     <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-2">Full Name</label>
                     <input
                       name="name" value={userInfo.name} onChange={handleInput}
-                      placeholder="Rahul Sharma"
+                      placeholder="Your full name"
                       className={`w-full bg-zinc-50 border rounded-2xl px-4 py-3 text-sm font-semibold outline-none transition-colors ${errors.name ? 'border-red-400 bg-red-50' : 'border-zinc-200 focus:border-indigo-500'}`}
                     />
                     {errors.name && <p className="text-[9px] text-red-500 font-bold mt-1 uppercase">{errors.name}</p>}
@@ -229,7 +243,7 @@ export const Payment = () => {
                     <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-2">Phone Number</label>
                     <input
                       name="phone" value={userInfo.phone} onChange={handleInput}
-                      placeholder="+91 98765 43210"
+                      placeholder="+91 XXXXX XXXXX"
                       className={`w-full bg-zinc-50 border rounded-2xl px-4 py-3 text-sm font-semibold outline-none transition-colors ${errors.phone ? 'border-red-400 bg-red-50' : 'border-zinc-200 focus:border-indigo-500'}`}
                     />
                     {errors.phone && <p className="text-[9px] text-red-500 font-bold mt-1 uppercase">{errors.phone}</p>}
@@ -239,7 +253,7 @@ export const Payment = () => {
                   <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-2">Email Address</label>
                   <input
                     name="email" value={userInfo.email} onChange={handleInput}
-                    placeholder="rahul@gmail.com" type="email"
+                    placeholder="you@example.com" type="email"
                     className={`w-full bg-zinc-50 border rounded-2xl px-4 py-3 text-sm font-semibold outline-none transition-colors ${errors.email ? 'border-red-400 bg-red-50' : 'border-zinc-200 focus:border-indigo-500'}`}
                   />
                   {errors.email && <p className="text-[9px] text-red-500 font-bold mt-1 uppercase">{errors.email}</p>}
@@ -285,10 +299,15 @@ export const Payment = () => {
                         <button className="bg-indigo-600 text-white px-5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all">Verify</button>
                       </div>
                       <div className="flex gap-3 pt-1">
-                        {['GPay', 'PhonePe', 'Paytm', 'BHIM'].map(app => (
-                          <div key={app} className="flex flex-col items-center gap-1 bg-zinc-50 border border-zinc-100 rounded-xl px-3 py-2 w-16 text-center">
-                            <div className="w-7 h-7 bg-zinc-200 rounded-full" />
-                            <span className="text-[9px] font-black text-zinc-400">{app}</span>
+                        {[
+                          { name: 'GPay',    bg: '#4285F4', label: 'G'  },
+                          { name: 'PhonePe', bg: '#5F259F', label: 'Pe' },
+                          { name: 'Paytm',   bg: '#002970', label: 'Pt' },
+                          { name: 'BHIM',    bg: '#00854A', label: 'B'  },
+                        ].map(app => (
+                          <div key={app.name} className="flex flex-col items-center gap-1 bg-zinc-50 border border-zinc-100 rounded-xl px-3 py-2 w-16 text-center">
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-black text-white" style={{ backgroundColor: app.bg }}>{app.label}</div>
+                            <span className="text-[9px] font-black text-zinc-400">{app.name}</span>
                           </div>
                         ))}
                       </div>

@@ -44,14 +44,18 @@ export const Download = () => {
   }
 
   useEffect(() => {
+    const payment = localStorage.getItem('payment')
+    if (!payment) {
+      navigate('/payment', { replace: true })
+      return
+    }
+    setPaymentData(JSON.parse(payment))
+
     const saved = localStorage.getItem('resumeData')
     if (saved) setResumeData(JSON.parse(saved))
 
     const template = localStorage.getItem('selectedTemplate')
     if (template) setSelectedTemplate(template)
-
-    const payment = localStorage.getItem('payment')
-    if (payment) setPaymentData(JSON.parse(payment))
 
     const cl = localStorage.getItem('coverLetter')
     if (cl) { try { setCoverLetter(JSON.parse(cl)) } catch {} }

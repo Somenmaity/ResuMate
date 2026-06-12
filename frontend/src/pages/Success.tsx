@@ -22,7 +22,10 @@ export const Success = () => {
 
     useEffect(() => {
         const paymentStr = localStorage.getItem('payment');
-        if (!paymentStr) return;
+        if (!paymentStr) {
+            navigate('/payment', { replace: true });
+            return;
+        }
 
         const paymentData = JSON.parse(paymentStr);
         setPaymentData(paymentData);
@@ -50,7 +53,7 @@ export const Success = () => {
         sendEmail();
     }, []);
 
-    const payment = JSON.parse(localStorage.getItem('payment') || '{}');
+    const payment = JSON.parse(localStorage.getItem('payment') || 'null') || {};
     const { email, name, paymentId, amount } = payment;
 
     const date = new Date().toLocaleDateString('en-IN', {
