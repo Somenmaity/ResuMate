@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { aiAPI, resumeAPI } from '../lib/api';
@@ -28,7 +28,8 @@ import {
     Award,
     Languages,
     FileText,
-    X
+    X,
+    Upload
 } from 'lucide-react';
 import ResumePreview from '../components/ResumePreview';
 import TemplateModal from '../components/TemplateModal';
@@ -102,6 +103,78 @@ export const ResumeEditor = () => {
 
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [lastSaved, setLastSaved] = useState<string>('');
+
+    const [parsing, setParsing] = useState(false);
+    const [parseMsg, setParseMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Upload resume file (PDF/DOC/DOCX) → parse → form fill
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = ''; // same file dobara select ho sake
+        if (!file) return;
+
+        const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+        if (!['.pdf', '.doc', '.docx'].includes(ext)) {
+            setParseMsg({ type: 'error', text: 'Only PDF, DOC, or DOCX files are supported' });
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            setParseMsg({ type: 'error', text: 'File too large (max 10 MB)' });
+            return;
+        }
+
+        setParsing(true);
+        setParseMsg(null);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/parse/resume`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (!data.success) {
+                setParseMsg({ type: 'error', text: data.error || 'Parsing failed. Please try another file.' });
+                return;
+            }
+
+            const r = data.resumeData;
+            // Extracted info se form fill karo (empty values se overwrite nahi)
+            if (r.personalInfo) {
+                if (r.personalInfo.fullName) setFullName(r.personalInfo.fullName);
+                if (r.personalInfo.title) setTitle(r.personalInfo.title);
+                if (r.personalInfo.email) setEmail(r.personalInfo.email);
+                if (r.personalInfo.phone) setPhone(r.personalInfo.phone);
+                if (r.personalInfo.location) setLocation(r.personalInfo.location);
+                if (r.personalInfo.linkedin) setLinkedin(r.personalInfo.linkedin);
+                if (r.personalInfo.portfolio) setPortfolio(r.personalInfo.portfolio);
+            }
+            if (r.summary) setSummary(r.summary);
+            if (r.experience?.length) setExperience(r.experience);
+            if (r.education?.length) setEducation(r.education);
+            if (r.skills?.length) setSkills(r.skills);
+            if (r.projects?.length) setProjects(r.projects);
+            if (r.certifications?.length) setCertifications(r.certifications);
+            if (r.languages?.length) setLanguages(r.languages);
+
+            // Parsed data store karo
+            localStorage.setItem('resumeData', JSON.stringify(r));
+            localStorage.setItem('resumeLastSaved', new Date().toISOString());
+
+            setParseMsg({
+                type: 'success',
+                text: data.aiUsed
+                    ? `✨ "${file.name}" parsed! Information auto-filled — review and edit below.`
+                    : `📄 "${file.name}" imported (basic mode). Please review the extracted fields.`
+            });
+        } catch {
+            setParseMsg({ type: 'error', text: 'Upload failed. Is the backend running?' });
+        } finally {
+            setParsing(false);
+            setTimeout(() => setParseMsg(null), 8000);
+        }
+    };
 
     // Load saved data on page open:
     useEffect(() => {
@@ -464,7 +537,14 @@ export const ResumeEditor = () => {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <button 
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={handleFileUpload}
+                        style={{ display: 'none' }}
+                    />
+                    <button
                         onClick={() => setShowTemplateModal(true)}
                         className="text-sm font-bold text-zinc-500 hover:text-black transition-colors flex items-center gap-2 px-3 py-1.5 rounded-lg border border-transparent hover:border-zinc-100"
                     >
@@ -489,6 +569,60 @@ export const ResumeEditor = () => {
                 {/* Left Side: Form */}
                 <div className="w-full lg:w-1/2 overflow-y-auto p-8 md:p-12 border-r border-zinc-100">
                     <div className="max-w-xl mx-auto space-y-12 pb-32">
+
+                        {/* Upload Resume Card */}
+                        <div>
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={parsing}
+                                style={{
+                                    width: '100%',
+                                    padding: '20px',
+                                    border: '2px dashed',
+                                    borderColor: parsing ? '#93c5fd' : parseMsg?.type === 'error' ? '#fca5a5' : '#a7f3d0',
+                                    borderRadius: '12px',
+                                    backgroundColor: parsing ? '#eff6ff' : parseMsg?.type === 'error' ? '#fef2f2' : '#f0fdf4',
+                                    cursor: parsing ? 'wait' : 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '14px',
+                                    transition: 'all 0.2s',
+                                    textAlign: 'left'
+                                }}
+                            >
+                                <div style={{
+                                    width: '40px', height: '40px', borderRadius: '10px', flexShrink: 0,
+                                    backgroundColor: parsing ? '#dbeafe' : parseMsg?.type === 'error' ? '#fee2e2' : '#dcfce7',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}>
+                                    <Upload size={20} color={parsing ? '#2563eb' : parseMsg?.type === 'error' ? '#dc2626' : '#16a34a'} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    {parsing ? (
+                                        <>
+                                            <div style={{ fontWeight: 700, fontSize: '14px', color: '#1d4ed8' }}>Reading your resume...</div>
+                                            <div style={{ fontSize: '12px', color: '#3b82f6', marginTop: '2px' }}>Extracting information, please wait</div>
+                                        </>
+                                    ) : parseMsg ? (
+                                        <>
+                                            <div style={{ fontWeight: 700, fontSize: '14px', color: parseMsg.type === 'success' ? '#15803d' : '#b91c1c' }}>{parseMsg.text}</div>
+                                            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>Click to upload another file</div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div style={{ fontWeight: 700, fontSize: '14px', color: '#15803d' }}>Upload Existing Resume</div>
+                                            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>PDF, DOC, or DOCX — auto-fills all fields below</div>
+                                        </>
+                                    )}
+                                </div>
+                                {!parsing && (
+                                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#16a34a', whiteSpace: 'nowrap' }}>
+                                        Browse file
+                                    </div>
+                                )}
+                            </button>
+                        </div>
+
                         <div>
                             <h2 className="text-3xl font-display font-bold mb-2">Your Information</h2>
                             <p className="text-zinc-500">Fill in your details — AI will optimize using the JD</p>

@@ -14,6 +14,8 @@ export const Download = () => {
   const [downloadingDOCX, setDownloadingDOCX] = useState(false)
   const [pdfDone, setPdfDone] = useState(false)
   const [docxDone, setDocxDone] = useState(false)
+  const [coverLetter, setCoverLetter] = useState<any>(null)
+  const [clDone, setClDone] = useState(false)
   const [resending, setResending] = useState(false)
   const [resent, setResent] = useState(false)
 
@@ -50,7 +52,15 @@ export const Download = () => {
 
     const payment = localStorage.getItem('payment')
     if (payment) setPaymentData(JSON.parse(payment))
+
+    const cl = localStorage.getItem('coverLetter')
+    if (cl) { try { setCoverLetter(JSON.parse(cl)) } catch {} }
   }, [])
+
+  // Which documents did the user pay for?
+  const plan = paymentData?.plan || 'resume'
+  const showResume = plan === 'resume' || plan === 'bundle'
+  const showCoverLetter = plan === 'cover_letter' || plan === 'bundle'
 
   const getFileName = () => {
     const name = resumeData?.personalInfo?.fullName || 'Resume'
@@ -77,6 +87,16 @@ export const Download = () => {
     } finally {
       setDownloadingDOCX(false)
     }
+  }
+
+  const handleDownloadCoverLetter = () => {
+    if (!coverLetter?.text) return
+    const blob = new Blob([coverLetter.text], { type: 'text/plain' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `Cover_Letter_${(coverLetter.company || 'ResuMate').replace(/\s+/g, '_')}.txt`
+    a.click()
+    setClDone(true)
   }
 
   return (
@@ -157,6 +177,7 @@ export const Download = () => {
           <p style={{fontSize:'13px', fontWeight:600, color:'#6b7280', marginBottom:'16px'}}>DOWNLOAD OPTIONS</p>
 
           {/* PDF Card */}
+          {showResume && (
           <div style={{backgroundColor:'white', border:'1px solid #e5e7eb', borderRadius:'16px', padding:'24px', marginBottom:'16px'}}>
             <div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'16px'}}>
               <div style={{width:'48px', height:'48px', backgroundColor:'#fef2f2', borderRadius:'12px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'24px'}}>📄</div>
@@ -185,8 +206,10 @@ export const Download = () => {
               {downloadingPDF ? '⏳ Generating PDF...' : pdfDone ? '✅ PDF Downloaded!' : '⬇ Download PDF'}
             </button>
           </div>
+          )}
 
           {/* DOCX Card */}
+          {showResume && (
           <div style={{backgroundColor:'white', border:'1px solid #e5e7eb', borderRadius:'16px', padding:'24px', marginBottom:'16px'}}>
             <div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'16px'}}>
               <div style={{width:'48px', height:'48px', backgroundColor:'#eff6ff', borderRadius:'12px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'24px'}}>📝</div>
@@ -215,6 +238,54 @@ export const Download = () => {
               {downloadingDOCX ? '⏳ Generating Word File...' : docxDone ? '✅ Word Downloaded!' : '⬇ Download Word (.docx)'}
             </button>
           </div>
+          )}
+
+          {/* Cover Letter Card */}
+          {showCoverLetter && (
+          <div style={{backgroundColor:'white', border:'1px solid #e5e7eb', borderRadius:'16px', padding:'24px', marginBottom:'16px'}}>
+            <div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'16px'}}>
+              <div style={{width:'48px', height:'48px', backgroundColor:'#f0fdf4', borderRadius:'12px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'24px'}}>✉️</div>
+              <div>
+                <h3 style={{margin:0, fontSize:'18px', fontWeight:700}}>Cover Letter</h3>
+                <p style={{margin:0, fontSize:'13px', color:'#6b7280'}}>
+                  {coverLetter ? `For ${coverLetter.jobTitle || 'job'} at ${coverLetter.company || 'company'}` : 'AI-generated for any job'}
+                </p>
+              </div>
+            </div>
+            <div style={{marginBottom:'16px'}}>
+              {['AI-written content', 'Matches your resume', 'Tone customizable', 'Ready to send'].map(f => (
+                <p key={f} style={{margin:'4px 0', fontSize:'13px', color:'#374151'}}>✓ {f}</p>
+              ))}
+            </div>
+            {coverLetter?.text ? (
+              <button
+                onClick={handleDownloadCoverLetter}
+                style={{
+                  width:'100%', padding:'14px',
+                  backgroundColor: clDone ? '#16a34a' : '#059669',
+                  color:'white', border:'none',
+                  borderRadius:'10px', fontSize:'16px',
+                  fontWeight:700, cursor:'pointer',
+                  transition:'all 0.2s'
+                }}
+              >
+                {clDone ? '✅ Cover Letter Downloaded!' : '⬇ Download Cover Letter'}
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate('/cover-letter')}
+                style={{
+                  width:'100%', padding:'14px',
+                  backgroundColor:'#059669', color:'white', border:'none',
+                  borderRadius:'10px', fontSize:'16px',
+                  fontWeight:700, cursor:'pointer'
+                }}
+              >
+                ✨ Generate Cover Letter First
+              </button>
+            )}
+          </div>
+          )}
 
           {/* Secondary Actions */}
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'16px'}}>

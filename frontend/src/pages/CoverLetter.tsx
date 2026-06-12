@@ -72,6 +72,7 @@ ${userName}
 ${userTitle ? userTitle + '\n' : ''}${personal.email || ''}${personal.phone ? ' | ' + personal.phone : ''}`
 
       setCoverLetterText(letter)
+      localStorage.setItem('coverLetter', JSON.stringify({ text: letter, company, jobTitle }))
       setGenerating(false)
       setGenerated(true)
     }, 2000)
